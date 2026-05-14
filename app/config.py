@@ -31,14 +31,24 @@ class Settings(BaseSettings):
     vapi_api_key: str = ""
     vapi_api_base: str = "https://api.vapi.ai"
     vapi_phone_number_id: str = ""
+    # Set after provisioning (`python -m app.assistant ...`). Required
+    # for outbound calling; the inbound webhook does not use it.
+    vapi_assistant_id: str = ""
 
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "INFO"
 
     webhook_rate_limit: str = "120/minute"
+    outbound_rate_limit: str = "30/minute"
 
     external_call_timeout_s: float = 5.0
+    vapi_api_timeout_s: float = 10.0
+
+    # Bearer credential required to trigger an outbound call via
+    # `POST /outbound/call`. Distinct from VAPI_SERVER_SECRET — a
+    # compromise of one should not enable the other.
+    outbound_api_key: str = ""
 
     # Supabase: when both are set, the registry uses Supabase-backed
     # `OrderBackend` and `CalendarBackend` implementations instead of

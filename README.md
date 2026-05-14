@@ -31,6 +31,7 @@ caller ──► Vapi (PSTN + STT + LLM + TTS) ──► POST /vapi/webhook ─�
 | Tool handlers (the spoken behavior) | `app/tools/handlers.py` |
 | Supabase backend (orders + appointments) | `app/supabase_client.py`, `app/tools/backends_supabase.py` |
 | SQL schema and dev seed | `migrations/` |
+| Outbound calling endpoint + async Vapi client | `app/outbound.py`, `app/vapi_client.py` |
 | Assistant provisioning (Vapi REST API) | `app/assistant.py` |
 | Versioned system prompt | `prompts/system_prompt_v1.md` |
 | Structured JSON logging w/ call-id correlation | `app/logging_setup.py` |
@@ -128,8 +129,11 @@ See `.env.example`. The important ones:
 | `VAPI_SERVER_SECRET` | Shared secret Vapi sends back. Compared in constant time against `Authorization: Bearer …` and legacy `X-Vapi-Secret`. **Required.** |
 | `VAPI_HMAC_ENABLED` | If `true`, the webhook also accepts requests signed with HMAC SHA256. |
 | `VAPI_HMAC_SECRET` / `VAPI_HMAC_HEADER` | HMAC key and signature header name (default `x-vapi-signature`). |
-| `VAPI_API_KEY` | Used only by the provisioning script. Never read by the webhook. |
-| `VAPI_PHONE_NUMBER_ID` | Optional; used with `--attach-phone`. |
+| `VAPI_API_KEY` | Used by the provisioning CLI **and** by `/outbound/call`. Never read by the inbound webhook. |
+| `VAPI_PHONE_NUMBER_ID` | Phone number used for outbound dials and for `--attach-phone`. |
+| `VAPI_ASSISTANT_ID` | Assistant to use for outbound dials. Set after running the provisioning CLI. |
+| `OUTBOUND_API_KEY` | Bearer credential clients of *your* server present to trigger an outbound dial. Distinct from `VAPI_SERVER_SECRET`. |
+| `OUTBOUND_RATE_LIMIT` | slowapi limit on `/outbound/call`, default `30/minute` per source IP. |
 | `WEBHOOK_RATE_LIMIT` | slowapi limit string, default `120/minute` per source IP. |
 | `EXTERNAL_CALL_TIMEOUT_S` | Per-call timeout on backend I/O (default 5.0s). |
 | `LOG_LEVEL` | `INFO` by default. JSON logs to stdout. |
@@ -231,6 +235,84 @@ dependency, full async, easy to mock.
 
 The client uses the **service-role key** and bypasses RLS. Keep it on
 the server only.
+
+## Outbound calling
+
+`POST /outbound/call` places an outbound phone call via the Vapi REST
+API. Required env vars: `VAPI_API_KEY` (the same key used by the
+provisioning CLI), `VAPI_ASSISTANT_ID`, `VAPI_PHONE_NUMBER_ID`, and
+`OUTBOUND_API_KEY` (the bearer credential clients of *your* server
+must present — deliberately distinct from the inbound webhook secret).
+
+Trigger a dial:
+
+```bash
+curl -X POST http://localhost:8000/outbound/call \
+  -H "Authorization: Bearer $OUTBOUND_API_KEY" \
+  -H 'content-type: application/json' \
+  -d '{
+    "to": "+14155550100",
+    "customer_name": "Jane Doe",
+    "first_message": "Hi {{customer_name}}, calling about your order {{order_id}}.",
+    "variables": {"customer_name": "Jane Doe", "order_id": "ORD-1001"},
+    "reason": "order_followup",
+    "idempotency_key": "followup-ORD-1001"
+  }'
+# -> 202 {"vapi_call_id":"…","status":"queued","outbound_call_id":"…"}
+```
+
+Or via the helper script:
+
+```bash
+python scripts/trigger_outbound.py \
+  --to +14155550100 \
+  --first-message 'Hi {{customer_name}}, calling about {{order_id}}.' \
+  --var customer_name='Jane Doe' \
+  --var order_id=ORD-1001 \
+  --reason order_followup \
+  --idempotency-key followup-ORD-1001
+```
+
+Pass `--dry-run` to print the request body without sending.
+
+### Templating
+
+`first_message` and the assistant's system prompt both support
+`{{variable}}` substitution. Anything in the `variables` map on the
+request is exposed to both. Use it to inject per-call context — order
+ID, customer name, appointment time — so the assistant knows why
+it's calling without having to ask.
+
+Variables must be scalars (string/number/bool). Nested objects are
+rejected at validation time.
+
+### Idempotency
+
+If you supply `idempotency_key` AND Supabase is configured:
+
+1. The endpoint first SELECTs the `outbound_calls` row by that key.
+   If it exists and has a `vapi_call_id`, the response is
+   `status: "duplicate"` with the original call's IDs — **no second
+   dial happens.**
+2. Otherwise the call is placed, then the row is INSERTed. The
+   `outbound_calls.idempotency_key` UNIQUE index guarantees only one
+   row survives even under true concurrency.
+
+Without Supabase the endpoint still works, but idempotency is
+unenforceable and a duplicate request will dial twice. For production
+outbound, enable Supabase.
+
+### Errors
+
+- `401` — bearer credential missing or wrong.
+- `400` — phone number not E.164, variables nested, or assistant /
+  phone-number IDs not configured.
+- `400` from upstream Vapi (e.g. number not allowed) is forwarded as
+  `400` with the Vapi message.
+- `502` — Vapi returned 5xx (we don't auto-retry, to avoid
+  double-dialing).
+- `503` — `OUTBOUND_API_KEY` empty (refuses to operate) or
+  `VAPI_API_KEY` not set.
 
 ## Swapping in other backends
 

@@ -18,3 +18,4 @@ _settings = get_settings()
 limiter = Limiter(key_func=get_remote_address)
 
 WEBHOOK_LIMIT = _settings.webhook_rate_limit
+OUTBOUND_LIMIT = _settings.outbound_rate_limit

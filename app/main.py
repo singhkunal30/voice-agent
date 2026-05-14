@@ -1,28 +1,57 @@
 """FastAPI app factory.
 
-Wires together: structured logging, the tool registry, the webhook
-router, rate limiting on the webhook endpoint, and health probes.
-Graceful shutdown is handled by uvicorn — anything that needs explicit
-cleanup goes in the lifespan context.
+Wires together: structured logging, the tool registry, the inbound
+webhook router, the outbound calling router, rate limiting, and
+health probes.
+
+External clients owned here (one connection pool each, shared across
+the registry + outbound endpoint, closed on lifespan exit):
+
+  * SupabaseClient — when SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY set.
+  * VapiClient     — when VAPI_API_KEY set; required for outbound.
 """
 
 from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from typing import Optional
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from .config import get_settings
+from .config import Settings, get_settings
 from .logging_setup import configure_logging
+from .outbound import router as outbound_router
 from .ratelimit import limiter
-from .tools import build_registry_from_settings
+from .supabase_client import SupabaseClient
+from .tools import build_registry
+from .vapi_client import VapiClient
 from .webhook import router as webhook_router
 
 log = logging.getLogger(__name__)
+
+
+def _maybe_supabase(settings: Settings) -> Optional[SupabaseClient]:
+    if settings.supabase_url and settings.supabase_service_role_key:
+        return SupabaseClient(
+            url=settings.supabase_url,
+            service_role_key=settings.supabase_service_role_key,
+            timeout_s=settings.external_call_timeout_s,
+        )
+    return None
+
+
+def _maybe_vapi(settings: Settings) -> Optional[VapiClient]:
+    if settings.vapi_api_key:
+        return VapiClient(
+            api_key=settings.vapi_api_key,
+            base_url=settings.vapi_api_base,
+            timeout_s=settings.vapi_api_timeout_s,
+        )
+    return None
 
 
 @asynccontextmanager
@@ -34,20 +63,23 @@ async def lifespan(app: FastAPI):
             "tools": app.state.registry.names(),
             "hmac_enabled": settings.vapi_hmac_enabled,
             "backend": "supabase"
-            if settings.supabase_url and settings.supabase_service_role_key
+            if app.state.supabase_client is not None
             else "in-memory",
+            "outbound_enabled": app.state.vapi_client is not None
+            and bool(settings.outbound_api_key),
         },
     )
     try:
         yield
     finally:
         log.info("voice agent shutting down")
-        aclose = getattr(app.state, "aclose_backends", None)
-        if aclose is not None:
-            try:
-                await aclose()
-            except Exception:  # pragma: no cover — best-effort shutdown
-                log.exception("backend close failed")
+        for name in ("supabase_client", "vapi_client"):
+            client = getattr(app.state, name, None)
+            if client is not None:
+                try:
+                    await client.aclose()
+                except Exception:  # pragma: no cover — best-effort
+                    log.exception("client close failed", extra={"client": name})
 
 
 def create_app() -> FastAPI:
@@ -60,12 +92,14 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Build eagerly so tests that don't trigger lifespan can still hit the
-    # webhook. When Supabase is configured, the returned `aclose` is awaited
-    # by the lifespan exit so the httpx connection pool drains cleanly.
-    registry, aclose = build_registry_from_settings(settings)
-    app.state.registry = registry
-    app.state.aclose_backends = aclose
+    # Build eagerly so tests that don't trigger lifespan can still hit
+    # the endpoints.
+    supabase = _maybe_supabase(settings)
+    vapi = _maybe_vapi(settings)
+
+    app.state.supabase_client = supabase
+    app.state.vapi_client = vapi
+    app.state.registry = build_registry(settings, supabase_client=supabase)
 
     app.state.limiter = limiter
     app.add_middleware(SlowAPIMiddleware)
@@ -78,6 +112,7 @@ def create_app() -> FastAPI:
         )
 
     app.include_router(webhook_router)
+    app.include_router(outbound_router)
 
     @app.get("/healthz")
     async def healthz():

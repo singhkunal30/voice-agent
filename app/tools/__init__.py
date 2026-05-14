@@ -1,9 +1,9 @@
-from .registry import ToolRegistry, build_default_registry, build_registry_from_settings
+from .registry import ToolRegistry, build_default_registry, build_registry
 from .errors import ToolError
 
 __all__ = [
     "ToolRegistry",
     "build_default_registry",
-    "build_registry_from_settings",
+    "build_registry",
     "ToolError",
 ]

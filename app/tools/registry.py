@@ -118,3 +118,37 @@ def build_default_registry(external_timeout_s: float = 5.0) -> ToolRegistry:
         calendar_backend=InMemoryCalendarBackend(),
         external_timeout_s=external_timeout_s,
     )
+
+
+async def _noop_aclose() -> None:
+    return None
+
+
+def build_registry_from_settings(settings) -> tuple[ToolRegistry, "object"]:
+    """Pick a registry based on environment.
+
+    Returns `(registry, aclose_coroutine_fn)`. The caller is responsible
+    for awaiting `aclose_coroutine_fn()` on shutdown — important for
+    Supabase, which holds an httpx connection pool.
+    """
+    if settings.supabase_url and settings.supabase_service_role_key:
+        # Imported lazily so the in-memory path stays a zero-dep import.
+        from ..supabase_client import SupabaseClient
+        from .backends_supabase import (
+            SupabaseCalendarBackend,
+            SupabaseOrderBackend,
+        )
+
+        client = SupabaseClient(
+            url=settings.supabase_url,
+            service_role_key=settings.supabase_service_role_key,
+            timeout_s=settings.external_call_timeout_s,
+        )
+        registry = ToolRegistry(
+            order_backend=SupabaseOrderBackend(client),
+            calendar_backend=SupabaseCalendarBackend(client),
+            external_timeout_s=settings.external_call_timeout_s,
+        )
+        return registry, client.aclose
+
+    return build_default_registry(settings.external_call_timeout_s), _noop_aclose

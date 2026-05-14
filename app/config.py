@@ -40,6 +40,13 @@ class Settings(BaseSettings):
 
     external_call_timeout_s: float = 5.0
 
+    # Supabase: when both are set, the registry uses Supabase-backed
+    # `OrderBackend` and `CalendarBackend` implementations instead of
+    # the in-memory fakes. Use the **service-role** key — it bypasses
+    # RLS, which the in-process tool handlers need.
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

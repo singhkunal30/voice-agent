@@ -29,6 +29,8 @@ caller ──► Vapi (PSTN + STT + LLM + TTS) ──► POST /vapi/webhook ─�
 | Pydantic schemas (webhook envelope + tool args) | `app/schemas/` |
 | Tool dispatch + backend interfaces | `app/tools/registry.py`, `app/tools/backends.py` |
 | Tool handlers (the spoken behavior) | `app/tools/handlers.py` |
+| Supabase backend (orders + appointments) | `app/supabase_client.py`, `app/tools/backends_supabase.py` |
+| SQL schema and dev seed | `migrations/` |
 | Assistant provisioning (Vapi REST API) | `app/assistant.py` |
 | Versioned system prompt | `prompts/system_prompt_v1.md` |
 | Structured JSON logging w/ call-id correlation | `app/logging_setup.py` |
@@ -131,6 +133,8 @@ See `.env.example`. The important ones:
 | `WEBHOOK_RATE_LIMIT` | slowapi limit string, default `120/minute` per source IP. |
 | `EXTERNAL_CALL_TIMEOUT_S` | Per-call timeout on backend I/O (default 5.0s). |
 | `LOG_LEVEL` | `INFO` by default. JSON logs to stdout. |
+| `SUPABASE_URL` | Your Supabase project URL (e.g. `https://abc.supabase.co`). Leave blank to use the in-memory fakes. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side **service-role** key. Bypasses RLS; never expose it to a browser. |
 
 ## Tests
 
@@ -175,15 +179,69 @@ The suite covers:
   there's no background state to flush. If you swap the in-memory
   backends for real ones, close their pools in the `lifespan` block.
 
-## Swapping in real backends
+## Supabase backend
+
+Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` and the registry
+automatically uses Supabase instead of the in-memory fakes — no code
+changes. Selection happens in `build_registry_from_settings`
+(`app/tools/registry.py`).
+
+### Schema
+
+Apply the migrations once per project:
+
+```bash
+# Either paste these into the Supabase SQL editor:
+cat migrations/0001_schema.sql
+cat migrations/0002_seed_dev.sql   # dev/staging only
+
+# Or, with the Supabase CLI:
+supabase db push
+```
+
+Two tables:
+
+| Table | Purpose | Notes |
+|---|---|---|
+| `orders` | Order status read-model | `order_id` is the primary key. `items text[]`, `eta date NULL`. |
+| `appointments` | Booked slots | Two UNIQUE indexes carry the production invariants — see below. |
+
+### Invariants enforced by Postgres
+
+- **`appointments.idempotency_key` UNIQUE.** The handler derives the
+  key from `(call_id, date, time, name, contact)`. A retried tool call
+  inserts a duplicate-key row; the backend catches the 23505,
+  re-SELECTs by the key, and returns the original confirmation. The
+  caller never gets two bookings.
+- **`appointments.starts_at` UNIQUE.** Two concurrent callers asking
+  for the same slot can both pass the pre-flight SELECT. The second
+  INSERT hits the unique index and the backend maps the 23505 to
+  `slot_taken`, which the handler speaks as "that slot was just
+  taken — want a different time?"
+
+Both paths are covered by `tests/test_supabase_backends.py` with an
+httpx `MockTransport` standing in for PostgREST.
+
+### Why hand-rolled PostgREST?
+
+The Supabase Python client is sync; the rest of the service is async.
+We only need three operations (select, select-by-key, insert), so
+`app/supabase_client.py` is a thin async wrapper over httpx — no extra
+dependency, full async, easy to mock.
+
+The client uses the **service-role key** and bypasses RLS. Keep it on
+the server only.
+
+## Swapping in other backends
 
 `app/tools/backends.py` defines two `Protocol`s — `OrderBackend` and
-`CalendarBackend` — and ships in-memory implementations so the project
-runs end-to-end without credentials. To plug in production systems:
+`CalendarBackend`. The in-memory and Supabase backends both satisfy
+them. To wire up something else (Cal.com, Google Calendar, an internal
+ERP):
 
-1. Implement the two protocols against your DB / ERP / calendar.
-2. Build a different registry in `app/tools/__init__.py` (or replace
-   `build_default_registry` in `app/main.py`).
+1. Implement the two protocols against your system.
+2. Extend `build_registry_from_settings` to pick your backend by env
+   var, or replace it entirely.
 
 Tests run against the protocols, so they keep working unchanged.
 

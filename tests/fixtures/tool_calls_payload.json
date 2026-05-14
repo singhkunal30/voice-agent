@@ -1,0 +1,31 @@
+{
+  "message": {
+    "timestamp": 1715700000000,
+    "type": "tool-calls",
+    "toolCallList": [
+      {
+        "id": "call_01HXYZ",
+        "name": "lookup_order",
+        "arguments": {
+          "order_id": "ORD-1001"
+        }
+      }
+    ],
+    "toolWithToolCallList": [
+      {
+        "type": "function",
+        "name": "lookup_order",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "order_id": {"type": "string"}
+          },
+          "required": ["order_id"]
+        },
+        "description": "Look up the status of a customer order."
+      }
+    ],
+    "assistant": {"name": "Order Assistant"},
+    "call": {"id": "vapi-call-abc123", "type": "inboundPhoneCall"}
+  }
+}

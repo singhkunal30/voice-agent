@@ -1,0 +1,17 @@
+{
+  "message": {
+    "timestamp": 1715700000000,
+    "type": "tool-calls",
+    "toolCalls": [
+      {
+        "id": "call_LEGACY",
+        "type": "function",
+        "function": {
+          "name": "lookup_order",
+          "arguments": "{\"order_id\":\"ORD-1002\"}"
+        }
+      }
+    ],
+    "call": {"id": "vapi-call-legacy", "type": "inboundPhoneCall"}
+  }
+}

@@ -7,11 +7,12 @@
 
 create table if not exists outbound_calls (
     id               uuid        primary key default gen_random_uuid(),
-    -- Populated after Vapi accepts the call. Nullable so we can insert
+    -- Provider-side call ID (e.g. Twilio CallSid `CA...`). Populated
+    -- after the provider accepts the call. Nullable so we can insert
     -- the audit row before issuing the API request if we ever choose
     -- to; today we insert after, so this is effectively NOT NULL on
     -- successful rows.
-    vapi_call_id     text        unique,
+    provider_call_id text        unique,
     to_number        text        not null,
     -- Free-form caller-supplied label, e.g. 'appointment_reminder'.
     reason           text,

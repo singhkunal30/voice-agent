@@ -1,15 +1,3 @@
-from .webhook import (
-    ToolCall,
-    ToolCallsMessage,
-    VapiWebhookEnvelope,
-    ToolResult,
-    ToolWebhookResponse,
-)
+from .outbound import OutboundCallRequest, OutboundCallResponse
 
-__all__ = [
-    "ToolCall",
-    "ToolCallsMessage",
-    "VapiWebhookEnvelope",
-    "ToolResult",
-    "ToolWebhookResponse",
-]
+__all__ = ["OutboundCallRequest", "OutboundCallResponse"]

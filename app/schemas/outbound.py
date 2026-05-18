@@ -20,15 +20,15 @@ class OutboundCallRequest(BaseModel):
         max_length=500,
         description=(
             "Override the assistant's opening line. May contain "
-            "{{variableName}} placeholders that Vapi substitutes from "
-            "`variables`."
+            "{{variableName}} placeholders that the inbound handler "
+            "substitutes from `variables`."
         ),
     )
     variables: dict[str, Any] = Field(
         default_factory=dict,
         description=(
-            "Per-call variable values passed to the assistant for "
-            "prompt + firstMessage templating."
+            "Per-call values exposed to the assistant for templating "
+            "the firstMessage and system prompt."
         ),
     )
     customer_name: Optional[str] = Field(default=None, max_length=80)
@@ -47,9 +47,6 @@ class OutboundCallRequest(BaseModel):
             "original call instead of dialing again."
         ),
     )
-    # Optional per-request overrides; defaults come from env.
-    assistant_id: Optional[str] = None
-    phone_number_id: Optional[str] = None
 
     @field_validator("to")
     @classmethod
@@ -64,9 +61,8 @@ class OutboundCallRequest(BaseModel):
     @field_validator("variables")
     @classmethod
     def _validate_variables(cls, v: dict[str, Any]) -> dict[str, Any]:
-        # Vapi's variableValues is a flat string→string-ish map. Reject
-        # nested objects so the caller gets a clear error instead of
-        # surprising templating behavior.
+        # Flat string/number/bool map only. Nested objects would be
+        # confusing for template substitution.
         for key, val in v.items():
             if not isinstance(key, str) or not key:
                 raise ValueError("variable keys must be non-empty strings")
@@ -84,7 +80,10 @@ class OutboundCallResponse(BaseModel):
         default=None,
         description="Our audit-log row ID (only when Supabase is configured).",
     )
-    vapi_call_id: str
+    provider_call_id: str = Field(
+        ...,
+        description="Twilio CallSid for the placed call.",
+    )
     status: str = Field(
         ...,
         description="`queued` for a fresh dial, `duplicate` for an idempotent replay.",

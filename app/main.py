@@ -1,14 +1,14 @@
 """FastAPI app factory.
 
-Wires together: structured logging, the tool registry, the inbound
-webhook router, the outbound calling router, rate limiting, and
-health probes.
+Wires together: structured logging, the tool registry, the Twilio
+inbound webhook + media-stream WebSocket, the outbound calling
+endpoint, rate limiting, and health probes.
 
 External clients owned here (one connection pool each, shared across
-the registry + outbound endpoint, closed on lifespan exit):
+endpoints, closed on lifespan exit):
 
-  * SupabaseClient — when SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY set.
-  * VapiClient     — when VAPI_API_KEY set; required for outbound.
+  * SupabaseClient        — when SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY set.
+  * TwilioOutboundClient  — when Twilio creds + PUBLIC_BASE_URL set; required for outbound.
 """
 
 from __future__ import annotations
@@ -28,8 +28,8 @@ from .outbound import router as outbound_router
 from .ratelimit import limiter
 from .supabase_client import SupabaseClient
 from .tools import build_registry
-from .vapi_client import VapiClient
-from .webhook import router as webhook_router
+from .transport.twilio_inbound import router as twilio_router
+from .transport.twilio_outbound import TwilioOutboundClient
 
 log = logging.getLogger(__name__)
 
@@ -44,12 +44,19 @@ def _maybe_supabase(settings: Settings) -> Optional[SupabaseClient]:
     return None
 
 
-def _maybe_vapi(settings: Settings) -> Optional[VapiClient]:
-    if settings.vapi_api_key:
-        return VapiClient(
-            api_key=settings.vapi_api_key,
-            base_url=settings.vapi_api_base,
-            timeout_s=settings.vapi_api_timeout_s,
+def _maybe_twilio(settings: Settings) -> Optional[TwilioOutboundClient]:
+    if (
+        settings.twilio_account_sid
+        and settings.twilio_auth_token
+        and settings.twilio_from_number
+        and settings.public_base_url
+    ):
+        return TwilioOutboundClient(
+            account_sid=settings.twilio_account_sid,
+            auth_token=settings.twilio_auth_token,
+            from_number=settings.twilio_from_number,
+            public_base_url=settings.public_base_url,
+            timeout_s=settings.twilio_api_timeout_s,
         )
     return None
 
@@ -61,25 +68,29 @@ async def lifespan(app: FastAPI):
         "voice agent starting",
         extra={
             "tools": app.state.registry.names(),
-            "hmac_enabled": settings.vapi_hmac_enabled,
             "backend": "supabase"
             if app.state.supabase_client is not None
             else "in-memory",
-            "outbound_enabled": app.state.vapi_client is not None
+            "outbound_enabled": app.state.twilio_client is not None
             and bool(settings.outbound_api_key),
+            "inbound_enabled": bool(
+                settings.twilio_auth_token and settings.public_base_url
+            ),
         },
     )
     try:
         yield
     finally:
         log.info("voice agent shutting down")
-        for name in ("supabase_client", "vapi_client"):
+        for name in ("supabase_client", "twilio_client"):
             client = getattr(app.state, name, None)
             if client is not None:
                 try:
                     await client.aclose()
                 except Exception:  # pragma: no cover — best-effort
-                    log.exception("client close failed", extra={"client": name})
+                    log.exception(
+                        "client close failed", extra={"client": name}
+                    )
 
 
 def create_app() -> FastAPI:
@@ -87,18 +98,18 @@ def create_app() -> FastAPI:
     configure_logging(settings.log_level)
 
     app = FastAPI(
-        title="Vapi Voice Agent",
-        version="0.1.0",
+        title="Voice Agent",
+        version="0.2.0",
         lifespan=lifespan,
     )
 
-    # Build eagerly so tests that don't trigger lifespan can still hit
-    # the endpoints.
+    # Build eagerly so tests that don't trigger lifespan can still
+    # hit the endpoints.
     supabase = _maybe_supabase(settings)
-    vapi = _maybe_vapi(settings)
+    twilio = _maybe_twilio(settings)
 
     app.state.supabase_client = supabase
-    app.state.vapi_client = vapi
+    app.state.twilio_client = twilio
     app.state.registry = build_registry(settings, supabase_client=supabase)
 
     app.state.limiter = limiter
@@ -111,7 +122,7 @@ def create_app() -> FastAPI:
             content={"detail": "rate limit exceeded"},
         )
 
-    app.include_router(webhook_router)
+    app.include_router(twilio_router)
     app.include_router(outbound_router)
 
     @app.get("/healthz")
@@ -121,7 +132,7 @@ def create_app() -> FastAPI:
 
     @app.get("/readyz")
     async def readyz(request: Request):
-        # Readiness: registry initialized and ready to dispatch.
+        # Readiness: registry initialized.
         ready = getattr(request.app.state, "registry", None) is not None
         return JSONResponse(
             status_code=200 if ready else 503,

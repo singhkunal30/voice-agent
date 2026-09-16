@@ -35,7 +35,7 @@ import {
   explainCase,
   runQuality,
   type QualityConfig,
-  type QualityFailureKind,
+
 } from './agentQuality'
 import {
   DEFAULT_SWEEP_SEEDS,

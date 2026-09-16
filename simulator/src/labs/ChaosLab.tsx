@@ -7,6 +7,8 @@ import { SimControls } from '../ui/SimControls'
 import { Assumption, Badge, Callout, PageHeader, Panel, Stat, fmtMs } from '../ui/primitives'
 import { Slider, Toggle } from '../ui/controls'
 import { useAppStore } from '../state/store'
+import { OUTCOME_Q } from '../domain/prediction'
+import { PredictionGate } from '../ui/Prediction'
 import { getSpec } from '../registry/components'
 import { useEffect } from 'react'
 
@@ -79,14 +81,29 @@ export default function ChaosLab() {
 
   const playback = usePlayback(result.events)
 
+  /**
+   * What the *caller* experienced, which is coarser than the simulator's own
+   * outcome enum. A dropped call and a failed call are the same event from the
+   * other end of the line, and a call that completed only because a fallback
+   * absorbed the failure is not the same experience as one that never noticed.
+   */
+  const perceivedOutcome =
+    result.outcome === 'dropped'
+      ? 'failed'
+      : result.outcome === 'completed' && (result.recoveries.length > 0 || !result.latency.withinBudget)
+        ? 'degraded'
+        : result.outcome
+
   // The lesson is the *difference* mitigations make, so require having watched
-  // the same failure play out both ways.
+  // the same failure play out both ways — and, for the course step, having
+  // committed to what the caller would experience before finding out.
   const ranWith = useRef(new Set<string>())
+  const predictedOutcome = useAppStore((s) => s.progress['predicted:call-outcome'])
   useEffect(() => {
     if (playback.state === 'idle' || armed.length === 0) return
     ranWith.current.add(mitigations ? 'on' : 'off')
-    if (ranWith.current.size === 2) markProgress('injected-failures')
-  }, [playback.state, armed.length, mitigations, markProgress])
+    if (ranWith.current.size === 2 && predictedOutcome) markProgress('chaos-predicted')
+  }, [playback.state, armed.length, mitigations, predictedOutcome, markProgress])
 
   // Which architecture nodes are implicated by the armed failures.
   const failedSpecIds = useMemo(
@@ -167,25 +184,44 @@ export default function ChaosLab() {
             </div>
           </Panel>
 
-          <div className="grid grid-cols-2 gap-2">
-            <Stat label="Outcome" value={result.outcome}
-              tone={result.outcome === 'completed' || result.outcome === 'handed-off' ? 'good' : 'bad'} />
-            <Stat label="Perceived latency" value={isFinite(result.latency.perceivedLatencyMs) ? fmtMs(result.latency.perceivedLatencyMs) : 'never'}
-              tone={result.latency.withinBudget ? 'good' : 'bad'} />
-          </div>
+          <PredictionGate
+            question={OUTCOME_Q}
+            route="/chaos"
+            actual={perceivedOutcome}
+            resetKey={`${armed.join()}:${mitigations}`}
+            className="space-y-3"
+            note={
+              armed.length === 0 ? (
+                'Nothing is armed yet — arm a failure on the left first, then predict what the caller experiences.'
+              ) : (
+                <>
+                  Armed: <b className="text-ink-200">{armed.join(', ')}</b>. Mitigations are{' '}
+                  <b className="text-ink-200">{mitigations ? 'on' : 'off'}</b>. A failure that a fallback absorbs and a
+                  failure that drops the call look identical on a status page.
+                </>
+              )
+            }
+          >
+            <div className="grid grid-cols-2 gap-2">
+              <Stat label="Outcome" value={result.outcome}
+                tone={result.outcome === 'completed' || result.outcome === 'handed-off' ? 'good' : 'bad'} />
+              <Stat label="Perceived latency" value={isFinite(result.latency.perceivedLatencyMs) ? fmtMs(result.latency.perceivedLatencyMs) : 'never'}
+                tone={result.latency.withinBudget ? 'good' : 'bad'} />
+            </div>
 
-          <Callout tone={result.outcome === 'completed' || result.outcome === 'handed-off' ? 'good' : 'bad'}
-            title={result.outcome === 'failed' || result.outcome === 'dropped' ? 'The caller lost this call' : 'The caller got an answer'}>
-            {result.outcomeReason}
-            {result.recoveries.length > 0 && (
-              <div className="mt-1.5 text-xs">
-                <span className="font-medium text-good">Recoveries used: </span>{result.recoveries.join(', ')}
-              </div>
-            )}
-            {!mitigations && armed.length > 0 && (
-              <div className="mt-1.5 text-xs text-warn">Mitigations are OFF — turn them on and compare.</div>
-            )}
-          </Callout>
+            <Callout tone={result.outcome === 'completed' || result.outcome === 'handed-off' ? 'good' : 'bad'}
+              title={result.outcome === 'failed' || result.outcome === 'dropped' ? 'The caller lost this call' : 'The caller got an answer'}>
+              {result.outcomeReason}
+              {result.recoveries.length > 0 && (
+                <div className="mt-1.5 text-xs">
+                  <span className="font-medium text-good">Recoveries used: </span>{result.recoveries.join(', ')}
+                </div>
+              )}
+              {!mitigations && armed.length > 0 && (
+                <div className="mt-1.5 text-xs text-warn">Mitigations are OFF — turn them on and compare.</div>
+              )}
+            </Callout>
+          </PredictionGate>
         </div>
 
         <div className="space-y-4">

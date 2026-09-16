@@ -185,6 +185,57 @@ export function questionsFor(req: Requirements): ChallengeQuestion[] {
 // Challenge generation (deterministic from seed)
 // ---------------------------------------------------------------------------
 
+/**
+ * A cost ceiling the design has to come in under.
+ *
+ * Derived from what a reasonable reference design costs for these exact
+ * requirements, then tightened or loosened by the brief's budget posture. That
+ * keeps it always achievable and never generous: a low-cost brief cannot also
+ * buy a premium voice and a flagship model, which is precisely the trade the
+ * challenge exists to force.
+ */
+export function budgetFor(req: Requirements): number {
+  const reference = computeCost({
+    ...DEFAULT_COST_INPUTS,
+    callsPerDay: req.callsPerDay,
+    avgCallMinutes: req.avgCallSeconds / 60,
+    peakConcurrent: req.peakConcurrentCalls,
+    recordingEnabled: req.recording,
+    turnsPerCall: Math.max(2, Math.round(req.avgCallSeconds / 30)),
+  })
+  const posture = req.budgetPosture === 'low-cost' ? 0.7 : req.budgetPosture === 'premium' ? 1.6 : 1
+  return Math.round(reference.usdPerCall * posture * 10000) / 10000
+}
+
+/**
+ * Does a design fit the brief's budget?
+ *
+ * Separate from `evaluateArchitecture` because the budget belongs to the
+ * challenge, not to the requirements — two briefs can want the same system at
+ * different prices, and that difference is the whole exercise.
+ */
+export function evaluateBudget(
+  req: Requirements,
+  budgetUsdPerCall: number,
+): { usdPerCall: number; budgetUsdPerCall: number; withinBudget: boolean; overBy: number; dominant: string } {
+  const actual = computeCost({
+    ...DEFAULT_COST_INPUTS,
+    callsPerDay: req.callsPerDay,
+    avgCallMinutes: req.avgCallSeconds / 60,
+    peakConcurrent: req.peakConcurrentCalls,
+    recordingEnabled: req.recording,
+    turnsPerCall: Math.max(2, Math.round(req.avgCallSeconds / 30)),
+  })
+  const dominant = [...actual.lineItems].sort((a, b) => b.usdPerCall - a.usdPerCall)[0]
+  return {
+    usdPerCall: actual.usdPerCall,
+    budgetUsdPerCall,
+    withinBudget: actual.usdPerCall <= budgetUsdPerCall,
+    overBy: Math.max(0, actual.usdPerCall - budgetUsdPerCall),
+    dominant: dominant ? `${dominant.label} — ${dominant.basis}` : 'nothing priced',
+  }
+}
+
 export function generateChallenge(seed: string): Challenge {
   const rng = new Rng(`challenge-${seed}`)
   const concurrentOptions = [200, 500, 1000, 2000, 5000, 10000]
@@ -231,14 +282,20 @@ export function generateChallenge(seed: string): Challenge {
   if (latency <= 800) discouraged.push('stt-batch-profile') // marker checked via config
   if (budget === 'low-cost') discouraged.push('llm-flagship-everywhere')
 
+  const budgetUsdPerCall = budgetFor(req)
+
   return {
     id: `gen-${seed}`,
     title: `Design: ${concurrent.toLocaleString()} concurrent, ${latency} ms, ${langs.join('+')}${handoff ? ', human transfer' : ''}`,
     requirements: req,
+    budgetUsdPerCall,
     questions: questionsFor(req),
     expectedComponents: [...new Set(expected)],
     discouragedComponents: discouraged,
     rubric: [
+      `Budget: under $${budgetUsdPerCall.toFixed(4)} per call at ${callsPerDay.toLocaleString()} calls/day — about $${Math.round(
+        budgetUsdPerCall * callsPerDay * 30,
+      ).toLocaleString()} a month. Every reliability question is easy when money is free.`,
       `Latency: a pipeline shape that can reach ${latency} ms (streaming ${latency <= 1000 ? 'required' : 'recommended'}).`,
       `Capacity: media tier sized for ${concurrent.toLocaleString()} concurrent with headroom.`,
       `Availability ${(-Math.log10(1 - availability)).toFixed(0)}-nines: ${availability >= 0.999 ? 'provider fallbacks + N+1 everywhere' : 'timeouts and monitoring at minimum'}.`,

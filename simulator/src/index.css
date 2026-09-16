@@ -14,53 +14,189 @@
     @apply bg-ink-950 text-ink-100;
     text-rendering: optimizeLegibility;
   }
+
+  /* One focus treatment for the whole app. Keyboard users get a visible ring
+     everywhere; pointer users never see it. Removing focus outlines without
+     replacing them is the single most common accessibility regression in a
+     redesign, so it is centralised here rather than left to each control. */
+  :focus-visible {
+    outline: 2px solid rgb(var(--ring-focus));
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+
   ::-webkit-scrollbar {
     width: 10px;
     height: 10px;
   }
   ::-webkit-scrollbar-track {
-    background: theme('colors.ink.900');
+    background: transparent;
   }
   ::-webkit-scrollbar-thumb {
     background: theme('colors.ink.700');
     border-radius: 5px;
-    border: 2px solid theme('colors.ink.900');
+    border: 2px solid transparent;
+    background-clip: content-box;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: theme('colors.ink.600');
+    background-clip: content-box;
   }
-  /* Range inputs pick up the accent in both themes. */
+
   input[type='range'] {
     accent-color: theme('colors.accent.DEFAULT');
+  }
+
+  /* Skip link for keyboard users: the sidebar is long and nobody should have
+     to tab through twenty-six labs to reach the page they are on. */
+  .skip-link {
+    @apply absolute left-2 top-2 z-50 -translate-y-20 rounded-md bg-accent px-3 py-2 text-sm font-medium text-ink-950 transition-transform;
+  }
+  .skip-link:focus {
+    @apply translate-y-0;
   }
 }
 
 @layer components {
+  /* ---- Surfaces ------------------------------------------------------ */
   .panel {
-    @apply rounded-lg border border-ink-750 bg-ink-900 shadow-panel;
+    @apply border border-ink-750 bg-ink-900;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-panel);
   }
   .panel-pad {
-    @apply rounded-lg border border-ink-750 bg-ink-900 p-4 shadow-panel;
+    @apply border border-ink-750 bg-ink-900;
+    border-radius: var(--radius-lg);
+    padding: var(--space-panel);
+    box-shadow: var(--shadow-panel);
   }
+  /* A panel that is deliberately quieter than its neighbours — used for
+     supporting detail that should not compete with the primary reading. */
+  .panel-sunken {
+    @apply border border-ink-800 bg-ink-950/60;
+    border-radius: var(--radius-lg);
+  }
+  .panel-raised {
+    @apply border border-ink-700 bg-ink-900;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-raised);
+  }
+  .pad {
+    padding: var(--space-panel);
+  }
+
+  /* ---- Controls ------------------------------------------------------ */
   .btn {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-850 px-3 py-1.5 text-sm text-ink-200 transition-colors hover:border-ink-600 hover:bg-ink-800 hover:text-ink-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center gap-1.5 border border-ink-700 bg-ink-850 px-3 py-1.5 text-sm text-ink-200 disabled:cursor-not-allowed disabled:opacity-40;
+    border-radius: var(--radius-md);
+    transition:
+      background-color var(--duration-fast) var(--ease-out),
+      border-color var(--duration-fast) var(--ease-out),
+      color var(--duration-fast) var(--ease-out);
   }
-  /* Solid fill with page-coloured text: reads as the primary action and
-     inverts correctly between themes without a second rule. */
+  .btn:hover:not(:disabled) {
+    @apply border-ink-600 bg-ink-800 text-ink-100;
+  }
   .btn-primary {
-    @apply border-transparent bg-accent text-ink-950 hover:border-transparent hover:bg-accent-dim hover:text-ink-950;
+    @apply border-transparent bg-accent text-ink-950;
+  }
+  .btn-primary:hover:not(:disabled) {
+    @apply border-transparent bg-accent-dim text-ink-950;
+  }
+  /* Borderless, for dense toolbars where a row of outlined buttons is noise. */
+  .btn-ghost {
+    @apply border-transparent bg-transparent text-ink-400;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    @apply border-transparent bg-ink-850 text-ink-100;
   }
   .btn-sm {
     @apply px-2 py-1 text-xs;
   }
-  .input {
-    @apply w-full rounded-md border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-sm text-ink-100 placeholder-ink-500 focus:border-accent-dim focus:outline-none focus:ring-1 focus:ring-accent-dim;
+  .btn-lg {
+    @apply px-4 py-2 text-base;
+  }
+
+  .input,
+  .select {
+    @apply w-full border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-sm text-ink-100 placeholder-ink-500;
+    border-radius: var(--radius-md);
+  }
+  .input:focus,
+  .select:focus {
+    @apply border-accent-dim outline-none ring-1 ring-accent-dim;
   }
   .label {
     @apply mb-1 block text-2xs font-medium text-ink-400;
   }
   .chip {
-    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs font-medium;
+    @apply inline-flex items-center gap-1 border px-2 py-0.5 text-2xs font-medium;
+    border-radius: var(--radius-full);
+  }
+  .kbd {
+    @apply inline-flex items-center border border-ink-700 bg-ink-850 px-1.5 py-0.5 font-mono text-2xs text-ink-400;
+    border-radius: var(--radius-sm);
+  }
+
+  /* ---- Tabs ---------------------------------------------------------- */
+  .tabs {
+    @apply flex gap-1 border-b border-ink-800;
+  }
+  .tab {
+    @apply -mb-px border-b-2 border-transparent px-3 py-2 text-sm text-ink-400;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+  .tab:hover {
+    @apply text-ink-200;
+  }
+  .tab-active {
+    @apply border-accent text-ink-100;
+  }
+
+  /* ---- Layout -------------------------------------------------------- */
+  /* Every lab body sits inside this, so the workspace has one measure rather
+     than twenty-six. Desktop-first: it fills 1280px and stops growing before
+     lines get too long to scan at 1920. */
+  .lab {
+    max-width: var(--content-max);
+    margin-inline: auto;
+    padding-inline: var(--space-5);
+    padding-block: var(--space-5);
+  }
+  /* The standard two-column workspace: controls left, results right. */
+  .split {
+    @apply grid gap-4;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  @media (min-width: 1100px) {
+    .split {
+      grid-template-columns: 20rem minmax(0, 1fr);
+    }
+    .split-wide {
+      grid-template-columns: 24rem minmax(0, 1fr);
+    }
+  }
+
+  /* ---- Status ------------------------------------------------------- */
+  /* Status colour is never the only signal: each of these is used with a
+     glyph or a word in the markup that applies it. */
+  .tone-good {
+    @apply border-good/35 bg-good/[0.07] text-good;
+  }
+  .tone-warn {
+    @apply border-warn/35 bg-warn/[0.07] text-warn;
+  }
+  .tone-bad {
+    @apply border-bad/35 bg-bad/[0.07] text-bad;
+  }
+  .tone-info {
+    @apply border-accent/35 bg-accent/[0.06] text-accent;
+  }
+  .tone-neutral {
+    @apply border-ink-700 bg-ink-850 text-ink-300;
   }
 }
 
@@ -125,6 +261,12 @@
 @keyframes flow-dash {
   to {
     stroke-dashoffset: -16;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__edge.edge-active .react-flow__edge-path {
+    animation: none;
   }
 }
 

@@ -4,6 +4,9 @@ import { LatencyMilestones, LatencyWaterfall } from '../ui/LatencyWaterfall'
 import { Assumption, Callout, Disclosure, PageHeader, Panel, Stat, fmtMs } from '../ui/primitives'
 import { Segmented, Slider, Toggle } from '../ui/controls'
 import { useAppStore } from '../state/store'
+import { LATENCY_BANDS, PERCEIVED_LATENCY_Q, bandFor } from '../domain/prediction'
+import { PredictionGate } from '../ui/Prediction'
+import { perceptionBand } from '../domain/numbers'
 
 export default function LatencyLab() {
   const [p, setP] = useState<LatencyParams>({ ...DEFAULT_LATENCY_PARAMS })
@@ -15,15 +18,16 @@ export default function LatencyLab() {
   const allStreaming = p.sttStreaming && p.llmStreaming && p.ttsStreaming
   const noneStreaming = !p.sttStreaming && !p.llmStreaming && !p.ttsStreaming
 
-  // Step 3 completes by *comparing*, not by arriving: remember which pipeline
-  // modes the learner has actually put the model into, and tick only once they
-  // have seen both worlds.
+  // The course step here needs evidence, not attendance: both pipeline shapes
+  // looked at, AND a latency band predicted correctly before the waterfall was
+  // revealed. The prediction flag is written by the gate, never by this lab.
+  const predictedLatency = useAppStore((s) => s.progress['predicted:perceived-latency'])
   const seenModes = useRef(new Set<string>())
   useEffect(() => {
     if (allStreaming) seenModes.current.add('streaming')
     if (noneStreaming) seenModes.current.add('batch')
-    if (seenModes.current.size === 2) markProgress('compared-streaming')
-  }, [allStreaming, noneStreaming, markProgress])
+    if (seenModes.current.size === 2 && predictedLatency) markProgress('latency-predicted')
+  }, [allStreaming, noneStreaming, predictedLatency, markProgress])
 
   return (
     <div className="p-4">
@@ -99,8 +103,30 @@ export default function LatencyLab() {
           </Disclosure>
         </div>
 
-        <div className="space-y-4">
-          <Panel title="Latency waterfall — end of user speech → agent audio heard">
+        <PredictionGate
+          question={PERCEIVED_LATENCY_Q}
+          route="/latency"
+          actual={bandFor(breakdown.perceivedLatencyMs, LATENCY_BANDS).id}
+          resetKey={`${p.sttStreaming}${p.llmStreaming}${p.ttsStreaming}:${p.endpointingMs}:${p.toolMs}`}
+          note={
+            <>
+              This pipeline is{' '}
+              <b className="text-ink-200">
+                {allStreaming ? 'fully streaming' : noneStreaming ? 'fully batch' : 'partly streaming'}
+              </b>
+              , endpointing waits {p.endpointingMs} ms, and there {p.toolMs > 0 ? `is a ${p.toolMs} ms tool call` : 'is no tool call'} on the
+              critical path. Remember that streaming stages overlap rather than adding up.
+            </>
+          }
+        >
+          <Panel
+            title="Latency waterfall — end of user speech → agent audio heard"
+            right={
+              <span className="chip tone-neutral" title={perceptionBand(breakdown.perceivedLatencyMs).feels}>
+                feels: {perceptionBand(breakdown.perceivedLatencyMs).label}
+              </span>
+            }
+          >
             <LatencyWaterfall breakdown={breakdown} />
           </Panel>
 
@@ -118,7 +144,7 @@ export default function LatencyLab() {
               The remaining floor is physics (network), product tuning (endpointing) and provider first-token/first-audio times.
             </Callout>
           </Panel>
-        </div>
+        </PredictionGate>
       </div>
     </div>
   )

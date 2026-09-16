@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { LAB_BY_ROUTE } from '../nav'
 import { useAppStore } from '../state/store'
+import { KIND_ACTION, KIND_MEANING, type NumberKind } from '../domain/numbers'
 
 export function Panel({ title, right, children, className = '', pad = true }: {
   title?: ReactNode
@@ -370,4 +371,132 @@ export function fmtUsd(v: number, digits = 2): string {
 
 export function fmtNum(v: number): string {
   return v.toLocaleString()
+}
+
+// ---------------------------------------------------------------------------
+// Number provenance
+// ---------------------------------------------------------------------------
+
+/**
+ * Where a number came from, as a chip you can put beside it.
+ *
+ * V1 labelled everything "simulation assumption", which was honest and
+ * flattening: learners tune an assumption, look up a reference and reproduce a
+ * measurement, and calling all three the same thing taught them to discount all
+ * three. See domain/numbers.ts for the distinction.
+ *
+ * The glyph differs as well as the colour, so the three are separable without
+ * relying on hue.
+ */
+export function NumberChip({ kind, source, seed, children }: {
+  kind: NumberKind
+  /** The standard, the seed, or the reasoning behind the guess. */
+  source?: string
+  seed?: string
+  children?: ReactNode
+}) {
+  const style: Record<NumberKind, { cls: string; glyph: string; word: string }> = {
+    ASSUMPTION: { cls: 'border-ink-600 bg-ink-850 text-ink-400', glyph: '≈', word: 'assumption' },
+    REFERENCE: { cls: 'border-control/40 bg-control/10 text-control', glyph: '§', word: 'reference' },
+    MEASURED: { cls: 'border-media/40 bg-media/10 text-media', glyph: '◉', word: 'measured' },
+  }
+  const s = style[kind]
+  return (
+    <span
+      className={`chip ${s.cls}`}
+      title={`${KIND_MEANING[kind]}\n\nWhat to do with it: ${KIND_ACTION[kind]}${source ? `\n\nSource: ${source}` : ''}${
+        seed ? `\nSeed: ${seed}` : ''
+      }`}
+    >
+      <span aria-hidden>{s.glyph}</span>
+      {children ?? s.word}
+    </span>
+  )
+}
+
+/** The three-kind legend, for labs that show all of them at once. */
+export function ProvenanceLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-2xs text-ink-500">
+      <span>Numbers on this page are:</span>
+      {(['ASSUMPTION', 'REFERENCE', 'MEASURED'] as NumberKind[]).map((k) => (
+        <span key={k} className="flex items-center gap-1.5">
+          <NumberChip kind={k} />
+          <span className="hidden xl:inline">{KIND_ACTION[k]}</span>
+        </span>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * A three-way verdict pill: holds / degrades / breaks.
+ *
+ * Used by the pressure tests and anywhere else with the same trichotomy. The
+ * word is the signal; the colour is reinforcement.
+ */
+export function Verdict({ value, size = 'md' }: { value: 'holds' | 'degrades' | 'breaks'; size?: 'sm' | 'md' }) {
+  const map = {
+    holds: { cls: 'tone-good', glyph: '✓', label: 'Holds' },
+    degrades: { cls: 'tone-warn', glyph: '▲', label: 'Degrades' },
+    breaks: { cls: 'tone-bad', glyph: '✕', label: 'Breaks' },
+  } as const
+  const v = map[value]
+  return (
+    <span className={`chip ${v.cls} ${size === 'md' ? 'px-2.5 py-1 text-xs' : ''}`}>
+      <span aria-hidden>{v.glyph}</span>
+      {v.label}
+    </span>
+  )
+}
+
+/** PASS / PARTIAL / FAIL, for the evaluation suite. */
+export function VerdictTag({ value }: { value: 'PASS' | 'PARTIAL' | 'FAIL' }) {
+  const map = {
+    PASS: 'tone-good',
+    PARTIAL: 'tone-warn',
+    FAIL: 'tone-bad',
+  } as const
+  return <span className={`chip ${map[value]} font-mono`}>{value}</span>
+}
+
+/**
+ * A horizontal proportion bar with its value written out.
+ *
+ * Bars are read faster than numbers and numbers are read more precisely than
+ * bars, so both appear. `tone` is chosen by the caller because "high is bad"
+ * for utilisation and "high is good" for coverage.
+ */
+export function Meter({ value, label, tone = 'accent', caption }: {
+  /** 0..1. Values above 1 overflow the track deliberately — saturation is visible. */
+  value: number
+  label?: ReactNode
+  tone?: 'accent' | 'good' | 'warn' | 'bad'
+  caption?: ReactNode
+}) {
+  const pct = Math.max(0, Math.min(1.25, value)) * 100
+  const fill = { accent: 'bg-accent', good: 'bg-good', warn: 'bg-warn', bad: 'bg-bad' }[tone]
+  return (
+    <div>
+      {(label || caption) && (
+        <div className="mb-1 flex items-baseline justify-between gap-2 text-2xs">
+          <span className="text-ink-400">{label}</span>
+          <span className="font-mono text-ink-500">{caption}</span>
+        </div>
+      )}
+      <div className="h-1.5 overflow-hidden rounded-full bg-ink-800">
+        <div className={`h-full rounded-full ${fill}`} style={{ width: `${Math.min(100, pct)}%` }} />
+      </div>
+    </div>
+  )
+}
+
+/** A quiet heading for a group of controls inside a panel. */
+export function SectionLabel({ children, hint }: { children: ReactNode; hint?: string }) {
+  return (
+    <div className="mb-2 flex items-center gap-1.5 text-2xs font-semibold uppercase tracking-wide text-ink-500" title={hint}>
+      {children}
+      {hint && <span className="cursor-help text-ink-600">ⓘ</span>}
+    </div>
+  )
 }

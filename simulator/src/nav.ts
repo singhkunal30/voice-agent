@@ -1,12 +1,52 @@
 /**
  * Single source of truth for navigation.
  *
- * Every surface that needs to talk about labs — the sidebar, the command
- * palette, the prev/next footer, the dashboard, the course — reads from here.
- * Each lab carries a plain-English `blurb` (what you do there) and a
- * `question` (what you walk away knowing), so navigation can be read by
- * someone who does not yet know the jargon.
+ * V1 had six menu groups, which is six things to hold in your head before you
+ * have learned anything. V2 organises the same labs around the **five systems a
+ * voice agent is actually made of**, because that is the mental model the whole
+ * product is trying to install:
+ *
+ *   1. The voice loop  — audio in, audio out, and every millisecond between.
+ *   2. The agent       — the thing that decides what to say and what to do.
+ *   3. The network     — how audio physically reaches you.
+ *   4. Production      — what changes when it is thousands of calls.
+ *   5. Architecture    — designing the whole thing, and defending it.
+ *
+ * Crossing those systems is a second axis: **what you are doing right now.**
+ * Building is not the same activity as breaking, and neither is diagnosing.
+ * Each lab declares the modes it belongs to, and the workspace filters by mode
+ * rather than duplicating the menu — the same twenty-nine labs, seen through
+ * whichever lens matches the task in hand.
+ *
+ * Every surface reads from here: the sidebar, the command palette, the
+ * prev/next footer, the home screen, the course.
  */
+
+/** What you are doing, as distinct from what you are looking at. */
+export type Mode = 'learn' | 'build' | 'simulate' | 'break' | 'diagnose' | 'challenge' | 'reference'
+
+export interface ModeMeta {
+  id: Mode
+  label: string
+  /** The verb, in the learner's words. */
+  blurb: string
+  icon: string
+}
+
+export const MODES: ModeMeta[] = [
+  { id: 'learn', label: 'Learn', blurb: 'Follow the course, one step at a time.', icon: 'book' },
+  { id: 'build', label: 'Build', blurb: 'Draw an architecture and have it critiqued.', icon: 'compass' },
+  { id: 'simulate', label: 'Simulate', blurb: 'Run it and watch what actually happens.', icon: 'play' },
+  { id: 'break', label: 'Break', blurb: 'Apply pressure and find what gives first.', icon: 'bolt' },
+  { id: 'diagnose', label: 'Diagnose', blurb: 'Read the evidence and work out why.', icon: 'scope' },
+  { id: 'challenge', label: 'Challenge', blurb: 'Design under constraints, without help.', icon: 'flag' },
+  { id: 'reference', label: 'Reference', blurb: 'Look something up.', icon: 'book' },
+]
+
+export const MODE_BY_ID: Record<Mode, ModeMeta> = Object.fromEntries(MODES.map((m) => [m.id, m])) as Record<
+  Mode,
+  ModeMeta
+>
 
 export interface LabMeta {
   route: string
@@ -19,14 +59,20 @@ export interface LabMeta {
   keywords: string[]
   /** Roughly how long a first pass takes, in minutes. */
   minutes: number
+  /** Which activities this lab supports. */
+  modes: Mode[]
+  /** New in V2 — surfaced in the menu so returning learners can find it. */
+  isNew?: boolean
 }
 
 export interface NavGroup {
   id: string
   title: string
-  /** Why this group exists, for the group tooltip and the dashboard. */
+  /** Why this group exists, for the group tooltip and the home screen. */
   blurb: string
   icon: string
+  /** Systems are the mental model; chrome is everything else. */
+  kind: 'system' | 'chrome'
   items: LabMeta[]
 }
 
@@ -34,24 +80,27 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     id: 'start',
     title: 'Start here',
-    blurb: 'Get oriented and pick something to work on.',
+    blurb: 'Where you are, what to do next, and what you are building it for.',
     icon: 'home',
+    kind: 'chrome',
     items: [
       {
         route: '/',
-        label: 'Home',
+        label: 'Workspace',
         blurb: 'Where you are, and what to do next.',
         question: 'What is this, and where should I start?',
-        keywords: ['dashboard', 'overview', 'home', 'start'],
+        keywords: ['dashboard', 'overview', 'home', 'start', 'workspace'],
         minutes: 2,
+        modes: ['learn', 'build', 'simulate', 'break', 'diagnose', 'challenge', 'reference'],
       },
       {
         route: '/learn',
         label: 'Guided course',
-        blurb: '13 steps from "what is a component" to designing under pressure.',
+        blurb: 'Thirteen steps from "what is a component" to designing under pressure.',
         question: 'What order should I learn this in?',
         keywords: ['course', 'path', 'curriculum', 'levels', 'progress', 'syllabus'],
         minutes: 90,
+        modes: ['learn'],
       },
       {
         route: '/scenarios',
@@ -60,14 +109,16 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'What am I building, and for whom?',
         keywords: ['brief', 'requirements', 'use case', 'project', 'customer'],
         minutes: 5,
+        modes: ['learn', 'build', 'challenge'],
       },
     ],
   },
   {
-    id: 'see',
-    title: 'See it work',
-    blurb: 'Watch a whole voice agent run before taking it apart.',
-    icon: 'play',
+    id: 'voice-loop',
+    title: 'The voice loop',
+    blurb: 'Audio in, audio out, and every millisecond in between. One turn of conversation, taken apart.',
+    icon: 'wave',
+    kind: 'system',
     items: [
       {
         route: '/call',
@@ -76,46 +127,7 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'What actually happens between "hello" and the reply?',
         keywords: ['simulator', 'timeline', 'events', 'run', 'playback', 'barge-in', 'turn'],
         minutes: 10,
-      },
-      {
-        route: '/canvas',
-        label: 'Architecture canvas',
-        blurb: 'Drag components together and have your design critiqued.',
-        question: 'Does the system I just drew actually hold up?',
-        keywords: ['diagram', 'design', 'build', 'components', 'validate', 'draw', 'wire'],
-        minutes: 15,
-      },
-      {
-        route: '/patterns',
-        label: 'Reference patterns',
-        blurb: 'Ten known-good architectures, from toy to platform.',
-        question: 'What do real designs at each scale look like?',
-        keywords: ['blueprint', 'template', 'examples', 'reference', 'starter'],
-        minutes: 8,
-      },
-      {
-        route: '/observability',
-        label: 'Observability',
-        blurb: 'The dashboards you would stare at during an incident.',
-        question: 'How would I know this system is in trouble?',
-        keywords: ['metrics', 'monitoring', 'dashboards', 'alerts', 'traces', 'logs', 'sre'],
-        minutes: 10,
-      },
-    ],
-  },
-  {
-    id: 'audio',
-    title: 'The audio path',
-    blurb: 'Sound in, sound out — and every millisecond in between.',
-    icon: 'wave',
-    items: [
-      {
-        route: '/audio',
-        label: 'Audio formats',
-        blurb: 'Build a pipeline hop by hop and see what each conversion costs.',
-        question: 'Why does phone audio sound the way it does?',
-        keywords: ['codec', 'pcm', 'opus', 'mulaw', 'sample rate', 'encoding', 'resample', 'bitrate'],
-        minutes: 12,
+        modes: ['learn', 'simulate', 'diagnose'],
       },
       {
         route: '/latency',
@@ -124,6 +136,7 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'Why does the agent feel slow, and what can I actually fix?',
         keywords: ['speed', 'delay', 'streaming', 'batch', 'waterfall', 'budget', 'ttfb', 'response time'],
         minutes: 12,
+        modes: ['learn', 'simulate', 'diagnose'],
       },
       {
         route: '/vad',
@@ -132,14 +145,16 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'Why does the agent interrupt me — or leave awkward pauses?',
         keywords: ['vad', 'endpointing', 'silence', 'barge-in', 'interrupt', 'turns', 'pauses'],
         minutes: 12,
+        modes: ['learn', 'simulate'],
       },
       {
         route: '/stt',
         label: 'Speech to text',
-        blurb: 'Watch partial transcripts firm up word by word.',
+        blurb: 'Watch partials firm up — then watch an accent and a second language break them.',
         question: 'How does audio become text, and where does it go wrong?',
-        keywords: ['asr', 'transcription', 'recognition', 'partials', 'wer', 'accuracy'],
-        minutes: 10,
+        keywords: ['asr', 'transcription', 'recognition', 'partials', 'wer', 'accuracy', 'hindi', 'hinglish', 'accent', 'multilingual', 'code-switching'],
+        minutes: 14,
+        modes: ['learn', 'simulate', 'diagnose'],
       },
       {
         route: '/tts',
@@ -148,14 +163,25 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'How fast can the agent start talking?',
         keywords: ['voice', 'synthesis', 'speech', 'audio out', 'chunks', 'prosody'],
         minutes: 10,
+        modes: ['learn', 'simulate'],
+      },
+      {
+        route: '/audio',
+        label: 'Audio formats',
+        blurb: 'Build a pipeline hop by hop and see what each conversion costs.',
+        question: 'Why does phone audio sound the way it does?',
+        keywords: ['codec', 'pcm', 'opus', 'mulaw', 'sample rate', 'encoding', 'resample', 'bitrate'],
+        minutes: 12,
+        modes: ['learn', 'simulate', 'reference'],
       },
     ],
   },
   {
-    id: 'runtime',
-    title: 'The brain and the wires',
-    blurb: 'The agent logic, and how audio physically reaches it.',
+    id: 'agent',
+    title: 'The agent',
+    blurb: 'The part that decides what to say and what to do — and the part that decides whether anyone keeps using it.',
     icon: 'chip',
+    kind: 'system',
     items: [
       {
         route: '/agent',
@@ -164,6 +190,37 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'Where does the thinking happen, and where does memory live?',
         keywords: ['llm', 'tools', 'function calling', 'context', 'prompt', 'state', 'session'],
         minutes: 12,
+        modes: ['learn', 'simulate'],
+      },
+      {
+        route: '/prompt',
+        label: 'Prompt engineering',
+        blurb: 'Assemble a voice prompt section by section and see what each one buys.',
+        question: 'What belongs in a voice prompt, and what does every token cost?',
+        keywords: ['prompt', 'system prompt', 'instructions', 'guardrails', 'examples', 'tokens', 'tool docs'],
+        minutes: 15,
+        modes: ['build', 'diagnose'],
+        isNew: true,
+      },
+      {
+        route: '/quality',
+        label: 'Agent quality',
+        blurb: 'Run twelve realistic turns and see the six ways they go wrong.',
+        question: 'Does the agent actually understand, choose and act correctly?',
+        keywords: ['quality', 'accuracy', 'hallucination', 'tool selection', 'arguments', 'escalation', 'correctness'],
+        minutes: 15,
+        modes: ['simulate', 'diagnose'],
+        isNew: true,
+      },
+      {
+        route: '/eval',
+        label: 'Evaluation',
+        blurb: 'Turn quality into PASS / PARTIAL / FAIL, and compare two configurations.',
+        question: 'How do I know a change made it better, and not just different?',
+        keywords: ['eval', 'evaluation', 'regression', 'test suite', 'ab test', 'release gate', 'ship'],
+        minutes: 15,
+        modes: ['diagnose', 'challenge'],
+        isNew: true,
       },
       {
         route: '/state-machines',
@@ -172,7 +229,17 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'What states can a call be in, and what breaks between them?',
         keywords: ['fsm', 'lifecycle', 'transitions', 'states', 'flow'],
         minutes: 10,
+        modes: ['learn', 'reference'],
       },
+    ],
+  },
+  {
+    id: 'network',
+    title: 'The network',
+    blurb: 'How audio physically reaches your server, and who it has to be handed to next.',
+    icon: 'server',
+    kind: 'system',
+    items: [
       {
         route: '/telephony',
         label: 'Telephony',
@@ -180,6 +247,7 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'What does a phone carrier actually hand my server?',
         keywords: ['sip', 'rtp', 'pstn', 'twilio', 'carrier', 'phone', 'did', 'trunk', 'dtmf'],
         minutes: 12,
+        modes: ['learn', 'simulate', 'reference'],
       },
       {
         route: '/websocket',
@@ -188,6 +256,7 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'How does audio get from the browser to my server?',
         keywords: ['ws', 'streaming', 'socket', 'reconnect', 'backpressure', 'transport'],
         minutes: 10,
+        modes: ['learn', 'simulate'],
       },
       {
         route: '/webrtc',
@@ -196,6 +265,7 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'Why do browsers use WebRTC instead of a plain socket?',
         keywords: ['ice', 'stun', 'turn', 'sdp', 'peer', 'nat', 'jitter', 'browser'],
         minutes: 12,
+        modes: ['learn', 'simulate'],
       },
       {
         route: '/handoff',
@@ -204,14 +274,16 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'How does the agent hand a call to a person?',
         keywords: ['transfer', 'escalation', 'human', 'agent', 'queue', 'warm transfer'],
         minutes: 10,
+        modes: ['learn', 'simulate', 'break'],
       },
     ],
   },
   {
     id: 'production',
-    title: 'Running it for real',
-    blurb: 'What changes when it is thousands of calls and someone is paying.',
-    icon: 'server',
+    title: 'Production',
+    blurb: 'What changes when it is thousands of calls, someone is paying, and it is three in the morning.',
+    icon: 'stack',
+    kind: 'system',
     items: [
       {
         route: '/scaling',
@@ -220,6 +292,7 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'What does 10 calls versus 10,000 calls actually cost me in servers?',
         keywords: ['infrastructure', 'capacity', 'autoscaling', 'load', 'concurrency', 'sizing', 'instances'],
         minutes: 15,
+        modes: ['simulate', 'break', 'diagnose'],
       },
       {
         route: '/chaos',
@@ -228,6 +301,7 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'What happens when a dependency dies at the worst moment?',
         keywords: ['failure', 'chaos', 'outage', 'inject', 'fault', 'resilience', 'incident'],
         minutes: 12,
+        modes: ['break', 'simulate'],
       },
       {
         route: '/reliability',
@@ -236,6 +310,7 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'Which patterns actually contain a failure?',
         keywords: ['retry', 'circuit breaker', 'fallback', 'timeout', 'idempotency', 'redundancy'],
         minutes: 12,
+        modes: ['break', 'build', 'reference'],
       },
       {
         route: '/cost',
@@ -244,15 +319,54 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'What does a minute of conversation cost, and who takes the money?',
         keywords: ['pricing', 'budget', 'spend', 'unit economics', 'margin', 'bill', 'money'],
         minutes: 12,
+        modes: ['diagnose', 'build', 'challenge'],
+      },
+      {
+        route: '/observability',
+        label: 'Observability',
+        blurb: 'The dashboards you would stare at during an incident.',
+        question: 'How would I know this system is in trouble?',
+        keywords: ['metrics', 'monitoring', 'dashboards', 'alerts', 'traces', 'logs', 'sre'],
+        minutes: 10,
+        modes: ['diagnose', 'break'],
       },
     ],
   },
   {
-    id: 'architect',
-    title: 'Think like an architect',
-    blurb: 'Make the calls yourself, and defend them.',
+    id: 'architecture',
+    title: 'Architecture',
+    blurb: 'Designing the whole thing — then finding out what it was quietly assuming.',
     icon: 'compass',
+    kind: 'system',
     items: [
+      {
+        route: '/canvas',
+        label: 'Architecture canvas',
+        blurb: 'Drag components together, have your design critiqued, and remove one to see what it was for.',
+        question: 'Does the system I just drew actually hold up?',
+        keywords: ['diagram', 'design', 'build', 'components', 'validate', 'draw', 'wire', 'what if', 'remove'],
+        minutes: 18,
+        modes: ['build', 'break'],
+      },
+      {
+        route: '/pressure',
+        label: 'Pressure tests',
+        blurb: 'Ten changes the world makes to a design, applied one at a time.',
+        question: 'What was this architecture quietly assuming would never change?',
+        keywords: ['pressure', 'stress', 'what if', 'robustness', 'traffic', 'outage', 'compliance', 'security', 'privacy', 'gdpr', 'pci'],
+        minutes: 20,
+        modes: ['break', 'diagnose', 'challenge'],
+        isNew: true,
+      },
+      {
+        route: '/patterns',
+        label: 'Reference patterns',
+        blurb: 'Ten known-good architectures, from toy to platform.',
+        question: 'What do real designs at each scale look like?',
+        keywords: ['blueprint', 'template', 'examples', 'reference', 'starter'],
+        minutes: 8,
+        modes: ['build', 'reference'],
+      },
       {
         route: '/decisions',
         label: 'Decision engine',
@@ -260,6 +374,7 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'How do requirements turn into technology choices?',
         keywords: ['tradeoffs', 'choices', 'requirements', 'rationale', 'adr', 'why'],
         minutes: 15,
+        modes: ['build', 'learn'],
       },
       {
         route: '/compare',
@@ -268,15 +383,26 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'Which of these two designs is better, and for what?',
         keywords: ['versus', 'comparison', 'evaluate', 'options', 'side by side'],
         minutes: 10,
+        modes: ['diagnose', 'build'],
       },
       {
         route: '/challenge',
         label: 'Challenges',
-        blurb: 'A brief, your design, an honest critique.',
+        blurb: 'A brief, a budget, your design, an honest critique.',
         question: 'Can I do this without the training wheels?',
-        keywords: ['test', 'exercise', 'practice', 'quiz', 'exam', 'interview'],
-        minutes: 20,
+        keywords: ['test', 'exercise', 'practice', 'quiz', 'exam', 'interview', 'budget'],
+        minutes: 25,
+        modes: ['challenge'],
       },
+    ],
+  },
+  {
+    id: 'reference',
+    title: 'Reference',
+    blurb: 'Look something up without losing your place.',
+    icon: 'book',
+    kind: 'chrome',
+    items: [
       {
         route: '/knowledge',
         label: 'Glossary',
@@ -284,23 +410,38 @@ export const NAV_GROUPS: NavGroup[] = [
         question: 'What does that word mean?',
         keywords: ['dictionary', 'reference', 'terms', 'definitions', 'concepts', 'lookup', 'glossary'],
         minutes: 5,
+        modes: ['reference'],
       },
     ],
   },
 ]
 
+/** The five systems, without the chrome around them. */
+export const SYSTEMS: NavGroup[] = NAV_GROUPS.filter((g) => g.kind === 'system')
+
 /** Flat, ordered list — drives prev/next and the command palette. */
 export const ALL_LABS: LabMeta[] = NAV_GROUPS.flatMap((g) => g.items)
 
-export const LAB_BY_ROUTE: Record<string, LabMeta> = Object.fromEntries(
-  ALL_LABS.map((l) => [l.route, l]),
-)
+export const LAB_BY_ROUTE: Record<string, LabMeta> = Object.fromEntries(ALL_LABS.map((l) => [l.route, l]))
 
 export const GROUP_BY_ROUTE: Record<string, NavGroup> = Object.fromEntries(
   NAV_GROUPS.flatMap((g) => g.items.map((i) => [i.route, g])),
 )
 
-/** Previous/next in reading order, skipping Home. */
+/** Labs that support a given activity. */
+export function labsInMode(mode: Mode): LabMeta[] {
+  return ALL_LABS.filter((l) => l.modes.includes(mode) && l.route !== '/')
+}
+
+/** Groups filtered to a mode, dropping any that end up empty. */
+export function groupsInMode(mode: Mode | null): NavGroup[] {
+  if (!mode) return NAV_GROUPS
+  return NAV_GROUPS.map((g) => ({ ...g, items: g.items.filter((i) => i.modes.includes(mode)) })).filter(
+    (g) => g.items.length > 0,
+  )
+}
+
+/** Previous/next in reading order, skipping the workspace home. */
 export function labNeighbours(route: string): { prev: LabMeta | null; next: LabMeta | null } {
   const ordered = ALL_LABS.filter((l) => l.route !== '/')
   const i = ordered.findIndex((l) => l.route === route)

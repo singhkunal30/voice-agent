@@ -39,6 +39,24 @@ export default {
       },
       boxShadow: {
         panel: 'var(--shadow-panel)',
+        raised: 'var(--shadow-raised)',
+      },
+      borderRadius: {
+        sm: 'var(--radius-sm)',
+        DEFAULT: 'var(--radius-md)',
+        md: 'var(--radius-md)',
+        lg: 'var(--radius-lg)',
+        xl: 'var(--radius-xl)',
+      },
+      spacing: {
+        panel: 'var(--space-panel)',
+        row: 'var(--row-height)',
+      },
+      maxWidth: {
+        content: 'var(--content-max)',
+      },
+      transitionTimingFunction: {
+        out: 'var(--ease-out)',
       },
       fontFamily: {
         // No webfont: the app is meant to run fully offline, and a half-loaded
@@ -56,6 +74,9 @@ export default {
         base: ['1rem', { lineHeight: '1.6rem' }],
         lg: ['1.125rem', { lineHeight: '1.65rem' }],
         xl: ['1.3125rem', { lineHeight: '1.8rem' }],
+        // Page titles only. Tight tracking keeps a two-word title from
+        // reading like a banner.
+        display: ['1.625rem', { lineHeight: '2.05rem', letterSpacing: '-0.015em' }],
       },
       keyframes: {
         'pulse-ring': {

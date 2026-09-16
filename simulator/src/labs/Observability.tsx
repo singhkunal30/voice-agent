@@ -185,7 +185,124 @@ export default function Observability() {
       <Panel title="What you are watching" className="mt-4">
         <NarrativeStrip scenario={scenario} now={now} points={points} />
       </Panel>
+
+      <QualitySignals />
     </div>
+  )
+}
+
+/**
+ * The signals most voice dashboards do not have.
+ *
+ * Every chart above this one is infrastructure: concurrency, latency, instance
+ * count, spend. All of it can be perfectly green while the agent books the
+ * wrong delivery date on one call in thirty, because none of it measures
+ * whether the agent was *right*.
+ *
+ * These are the quality signals, with what a movement in each actually means.
+ * They come out of the same models the Agent Quality and Evaluation labs run,
+ * which is the point: a metric you cannot reproduce in a simulator is a metric
+ * you cannot alert on with confidence either.
+ */
+function QualitySignals() {
+  const SIGNALS: {
+    name: string
+    unit: string
+    why: string
+    spike: string
+    alertOn: string
+    kind: 'symptom' | 'cause'
+  }[] = [
+    {
+      name: 'Escalation rate, per intent',
+      unit: '% of calls transferred',
+      why: 'The most sensitive quality metric a voice agent has, and the one with a direct cost attached. It moves before anything else does.',
+      spike: 'Concentrated in one intent: a prompt or tool regression. Spread evenly: recognition or latency has made the whole experience worse.',
+      alertOn: 'A step change against the same hour last week, per intent. An aggregate number hides the regression that matters.',
+      kind: 'symptom',
+    },
+    {
+      name: 'Read-back confirmation rate',
+      unit: '% of identifier turns confirmed',
+      why: 'Directly measures whether the guardrail that prevents silent wrong-argument failures is actually firing.',
+      spike: 'A fall means the model has stopped following the instruction — usually after a prompt edit that made the prompt longer rather than clearer.',
+      alertOn: 'Below a floor you set. This is a compliance-style check, not a trend.',
+      kind: 'cause',
+    },
+    {
+      name: 'Tool calls with no prior confirmation',
+      unit: 'count per hour',
+      why: 'The closest thing to a direct measurement of the silent failure: a state change made from an unconfirmed identifier.',
+      spike: 'Any sustained non-zero value is a bug report. These are the failures a customer discovers days later.',
+      alertOn: 'Absolute count, paging severity, on mutating tools only.',
+      kind: 'symptom',
+    },
+    {
+      name: 'Word error rate, by language and channel',
+      unit: '% of words',
+      why: 'Recognition quality is data integrity: every identifier the caller speaks goes into a tool call.',
+      spike: 'A rise on one language only usually means a model version changed. A rise across all of them usually means the audio path did.',
+      alertOn: 'Per language and per channel, never in aggregate — a bilingual deployment averages away the language that broke.',
+      kind: 'cause',
+    },
+    {
+      name: 'Turns per resolved call',
+      unit: 'count',
+      why: 'Rises when the agent is asking for things it was already told. Detects context-window regressions that no error log will show.',
+      spike: 'A rise with a flat escalation rate means callers are tolerating it. That is worse news, not better — they are leaving instead of complaining.',
+      alertOn: 'Trend against a rolling baseline, segmented by call length.',
+      kind: 'symptom',
+    },
+    {
+      name: 'Barge-in rate and mid-reply interruptions',
+      unit: '% of agent turns interrupted',
+      why: 'A proxy for replies that are too long, too slow, or answering the wrong question.',
+      spike: 'A rise right after a prompt change almost always means the replies got longer.',
+      alertOn: 'Trend, paired with reply length in tokens — the two together say which it is.',
+      kind: 'symptom',
+    },
+  ]
+
+  return (
+    <Panel
+      title="The signals most voice dashboards do not have"
+      className="mt-4"
+      right={<Assumption>Definitions, not measurements</Assumption>}
+    >
+      <p className="mb-4 max-w-3xl text-sm leading-relaxed text-ink-400">
+        Everything above this panel is infrastructure. All of it can be green while the agent books the wrong date on
+        one call in thirty, because none of it measures whether the agent was <i>right</i>. Symptom metrics tell you the
+        caller is having a bad time; cause metrics tell you why. Page on the first kind, and put the second kind on the
+        dashboard you open when it fires.
+      </p>
+      <div className="grid gap-2.5 lg:grid-cols-2">
+        {SIGNALS.map((sig) => (
+          <div key={sig.name} className="rounded-md border border-ink-800 bg-ink-850/40 p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-ink-100">{sig.name}</span>
+              <span className={`chip ${sig.kind === 'symptom' ? 'tone-warn' : 'tone-info'}`}>
+                {sig.kind === 'symptom' ? '◎ symptom' : '⌖ cause'}
+              </span>
+              <span className="ml-auto font-mono text-2xs text-ink-500">{sig.unit}</span>
+            </div>
+            <p className="mt-1.5 text-xs leading-relaxed text-ink-300">{sig.why}</p>
+            <p className="mt-1.5 text-xs leading-relaxed text-ink-400">
+              <b className="text-ink-300">When it moves: </b>
+              {sig.spike}
+            </p>
+            <p className="mt-1.5 text-xs leading-relaxed text-ink-500">
+              <b className="text-ink-400">Alert on: </b>
+              {sig.alertOn}
+            </p>
+          </div>
+        ))}
+      </div>
+      <Callout tone="info" title="Why these are not on the charts above">
+        None of them can be computed from infrastructure telemetry. They need the transcript, the tool arguments and the
+        outcome of the call joined together — which is a data pipeline someone has to build on purpose, and the reason
+        most voice deployments discover quality problems from customers rather than from dashboards.
+      </Callout>
+    </Panel>
   )
 }
 

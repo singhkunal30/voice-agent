@@ -1,20 +1,28 @@
 /**
- * The guided course: the spine of the whole simulator.
+ * The guided course: the spine of the whole workspace.
  *
- * Twenty-six labs is a menu, not a curriculum. This file turns them into an
- * ordered path — five stages, thirteen steps — and every surface reads from it:
+ * Twenty-nine labs is a menu, not a curriculum. This file turns them into an
+ * ordered path — six stages, fifteen steps — and every surface reads from it:
  * the course page, the rail carried into each lab, the prev/next footer, the
- * sidebar markers and the home page's "continue".
+ * sidebar markers and the workspace's "continue".
  *
- * Two rules keep the path honest:
+ * Three rules keep the path honest, and the third is new in V2:
  *
- *  1. A step is either `auto` (completed by an interaction the learner actually
- *     performs) or `self` (a judgment call they tick themselves). Visiting a
- *     page never completes anything — a progress bar you did not earn is worse
- *     than no progress bar.
+ *  1. Visiting a page never completes anything. A progress bar you did not
+ *     earn is worse than no progress bar.
  *  2. Each step says, in the learner's words, what "done" means here. The lab's
  *     own briefing says what to *click*; this says what you should be able to
  *     *say* afterwards.
+ *  3. **Most steps need evidence, not activity.** Eight of the fifteen require
+ *     an artefact the learner produced: a prediction they committed to before
+ *     looking and got right, a quality problem they diagnosed and removed, a
+ *     change that improved an evaluation without regressing it, an
+ *     architecture they turned from breaking to holding under pressure.
+ *
+ * Rule 3 is the difference between "I did the latency lab" and "I can predict
+ * where latency lands". The first is attendance. Only the second is learning,
+ * and only the second is hard to fake — which is the point, because the person
+ * being fooled by an unearned progress bar is the learner.
  */
 
 export interface CourseStage {
@@ -38,6 +46,22 @@ export type Completion =
       /** The question the learner answers honestly before ticking. */
       prompt: string
     }
+  | {
+      kind: 'evidence'
+      /**
+       * Flag set only when the learner produces the artefact.
+       *
+       * Where the artefact includes a prediction, the lab checks the store's
+       * `predicted:<questionId>` flag, which is written only for a prediction
+       * that was committed to before the result was visible *and* turned out
+       * to be right. Reading the answer first cannot earn it.
+       */
+      flag: string
+      /** The artefact, named. */
+      artefact: string
+      /** How to produce it, concretely. */
+      how: string
+    }
 
 export interface CourseStep {
   /** 1-based position in the course. */
@@ -53,6 +77,11 @@ export interface CourseStep {
   completion: Completion
 }
 
+/** Flag written when a prediction on `questionId` is committed to and correct. */
+export function predictionFlag(questionId: string): string {
+  return `predicted:${questionId}`
+}
+
 export const COURSE_STAGES: CourseStage[] = [
   {
     id: 'foundations',
@@ -60,24 +89,29 @@ export const COURSE_STAGES: CourseStage[] = [
     blurb: 'What the pieces are, and how one turn of conversation flows through them.',
   },
   {
-    id: 'human',
-    title: 'Make it feel human',
-    blurb: 'Turn-taking, interruptions, tools and memory — the difference between a demo and a conversation.',
+    id: 'voice-loop',
+    title: 'The voice loop',
+    blurb: 'Latency, turn-taking and recognition — the difference between a demo and a conversation.',
+  },
+  {
+    id: 'agent',
+    title: 'The agent',
+    blurb: 'What it says, what it does, and how you find out whether any of it is right.',
   },
   {
     id: 'realworld',
-    title: 'Connect the real world',
+    title: 'The real world',
     blurb: 'Phone networks and human colleagues, both of which have opinions.',
   },
   {
     id: 'production',
-    title: 'Run it in production',
-    blurb: 'Scale, design, failure and cost — everything that only shows up after launch.',
+    title: 'Production',
+    blurb: 'Scale, failure and cost — everything that only shows up after launch.',
   },
   {
     id: 'prove',
     title: 'Prove it',
-    blurb: 'Do it yourself, on a brief you have not seen before.',
+    blurb: 'Find what your design assumed, then do it again on a brief you have not seen.',
   },
 ]
 
@@ -110,20 +144,24 @@ export const COURSE_STEPS: CourseStep[] = [
   },
   {
     n: 3,
-    stageId: 'foundations',
-    title: 'See why streaming wins',
-    goal: 'Explain which milliseconds streaming removes, and which it cannot.',
+    stageId: 'voice-loop',
+    title: 'Predict where latency lands',
+    goal: 'Say, before running it, which milliseconds streaming removes and which it cannot.',
     route: '/latency',
-    criteria: ['Compare all-batch against all-streaming', 'Find the single longest bar in the waterfall'],
+    criteria: [
+      'Put the pipeline into all-batch and all-streaming, and look at both',
+      'Commit to a latency band before the waterfall is revealed, and be right',
+    ],
     completion: {
-      kind: 'auto',
-      flag: 'compared-streaming',
-      trigger: 'Ticks once you have switched the pipeline between batch and streaming.',
+      kind: 'evidence',
+      flag: 'latency-predicted',
+      artefact: 'A correct latency prediction, plus having seen both the batch and the streaming pipeline.',
+      how: 'The Latency lab hides the waterfall until you pick a band. Getting it wrong costs nothing and teaches more; getting it right — having looked at both pipeline shapes — is what completes this step.',
     },
   },
   {
     n: 4,
-    stageId: 'human',
+    stageId: 'voice-loop',
     title: 'Tune turn-taking',
     goal: 'Say why an agent interrupts people, and what it costs to stop it.',
     route: '/vad',
@@ -139,7 +177,23 @@ export const COURSE_STEPS: CourseStep[] = [
   },
   {
     n: 5,
-    stageId: 'human',
+    stageId: 'voice-loop',
+    title: 'Hear what recognition gets wrong',
+    goal: 'Explain why a misheard order number is a data-integrity problem, not a speech problem.',
+    route: '/stt',
+    criteria: [
+      'Run the same sentence through a narrowband and a wideband channel',
+      'Switch the recogniser between code-switch-aware and not, and watch the error rate move',
+    ],
+    completion: {
+      kind: 'auto',
+      flag: 'compared-recognition',
+      trigger: 'Ticks once you have changed how the pipeline handles code-switching and seen the effect.',
+    },
+  },
+  {
+    n: 6,
+    stageId: 'agent',
     title: 'Add tools and memory',
     goal: 'Decide which work belongs inside a turn and which belongs after it.',
     route: '/agent',
@@ -151,7 +205,58 @@ export const COURSE_STEPS: CourseStep[] = [
     },
   },
   {
-    n: 6,
+    n: 7,
+    stageId: 'agent',
+    title: 'Write a prompt that prevents a failure',
+    goal: 'Name the instruction that prevents each failure mode, and what it costs per turn.',
+    route: '/prompt',
+    criteria: [
+      'Assemble a prompt whose projected failure rate falls below 8%',
+      'Be able to say which single section bought the most, and what it costs in tokens',
+    ],
+    completion: {
+      kind: 'evidence',
+      flag: 'prompt-prevents-failure',
+      artefact: 'A prompt you edited that projects under 8% of turns going wrong.',
+      how: 'Change sections in the Prompt lab until the projected failure rate drops below 8%. Arriving with a good prompt already saved does not count — the step needs an edit you made.',
+    },
+  },
+  {
+    n: 8,
+    stageId: 'agent',
+    title: 'Find the failure nobody notices',
+    goal: 'Diagnose a silent state change and remove it.',
+    route: '/quality',
+    criteria: [
+      'Get a run that changes data incorrectly without signalling an error',
+      'Change the configuration until that stops happening, and know which change did it',
+    ],
+    completion: {
+      kind: 'evidence',
+      flag: 'quality-no-silent-mutations',
+      artefact: 'A configuration you fixed: silent state changes present, then gone.',
+      how: 'You have to see the problem before you can fix it — the step needs both a run with silent mutations and a later run without them.',
+    },
+  },
+  {
+    n: 9,
+    stageId: 'agent',
+    title: 'Decide whether to ship it',
+    goal: 'Turn a quality change into a release decision you could defend in review.',
+    route: '/eval',
+    criteria: [
+      'Produce a comparison where cases improve, nothing regresses, and the gate opens',
+      'Be able to name one case that changed and say why',
+    ],
+    completion: {
+      kind: 'evidence',
+      flag: 'eval-clean-improvement',
+      artefact: 'An evaluation where something improved, nothing regressed, and the release gate opened.',
+      how: 'Change the prompt, come back, and compare. A change that fixes three cases and breaks one is not this artefact — that is the point of it.',
+    },
+  },
+  {
+    n: 10,
     stageId: 'realworld',
     title: 'Connect a phone network',
     goal: 'Explain what a carrier hands your server, and why signalling and audio arrive separately.',
@@ -164,7 +269,7 @@ export const COURSE_STEPS: CourseStep[] = [
     },
   },
   {
-    n: 7,
+    n: 11,
     stageId: 'realworld',
     title: 'Hand off to a human',
     goal: 'Design a transfer that still works when no human is available.',
@@ -177,84 +282,71 @@ export const COURSE_STEPS: CourseStep[] = [
     },
   },
   {
-    n: 8,
-    stageId: 'production',
-    title: 'Scale to hundreds of calls',
-    goal: 'Size a fleet, and find what saturates before anything else does.',
-    route: '/scaling',
-    criteria: ['Raise the load past a hundred concurrent calls', 'Name the first component to run out of room'],
-    completion: {
-      kind: 'auto',
-      flag: 'scaled-hundreds',
-      trigger: 'Ticks once you have pushed the load past 100 concurrent calls yourself.',
-    },
-  },
-  {
-    n: 9,
-    stageId: 'production',
-    title: 'Scale to thousands',
-    goal: 'Explain why a spike hurts even when autoscaling is switched on.',
-    route: '/scaling',
-    criteria: ['Push past a thousand concurrent calls', 'Watch a traffic spike outrun the autoscaler'],
-    completion: {
-      kind: 'auto',
-      flag: 'scaled-thousands',
-      trigger: 'Ticks once you have pushed the load past 1,000 concurrent calls yourself.',
-    },
-  },
-  {
-    n: 10,
-    stageId: 'production',
-    title: 'Break it on purpose',
-    goal: 'Predict the blast radius of a dead dependency before you inject it.',
-    route: '/chaos',
-    criteria: ['Kill a provider mid-call', 'Run the same failure again with its mitigation switched on'],
-    completion: {
-      kind: 'auto',
-      flag: 'injected-failures',
-      trigger: 'Ticks once you have run a failure both with and without mitigations.',
-    },
-  },
-  {
-    n: 11,
-    stageId: 'production',
-    title: 'Move the money',
-    goal: 'Find the dominant cost line and change it on purpose.',
-    route: '/cost',
-    criteria: ['Find the biggest line item at your volume', 'Apply a lever and check the annual difference'],
-    completion: {
-      kind: 'auto',
-      flag: 'optimized-cost',
-      trigger: 'Ticks once you have changed a pricing or volume input.',
-    },
-  },
-  {
     n: 12,
     stageId: 'production',
-    title: 'Design from requirements',
-    goal: 'Turn a brief into an architecture, and defend every choice in it.',
-    route: '/decisions',
+    title: 'Predict what a load needs',
+    goal: 'Say what shape of system a given load requires, before the model tells you.',
+    route: '/scaling',
     criteria: [
-      'Generate an architecture from a set of requirements',
-      'Find one decision you disagree with and say what you would trade instead',
+      'Push the load past a thousand concurrent calls',
+      'Commit to a tier before the bill of materials appears, and be right',
     ],
     completion: {
-      kind: 'self',
-      flag: 'used-decision-engine',
-      prompt: 'Can you argue against one of its decisions and say what you would give up?',
+      kind: 'evidence',
+      flag: 'scaling-predicted',
+      artefact: 'A correct prediction of the tier a load needs, made after you had pushed the load past a thousand concurrent calls.',
+      how: 'The interesting wrong answer is one tier too high: distribution feels like the grown-up choice long before the arithmetic asks for it.',
     },
   },
   {
     n: 13,
-    stageId: 'prove',
-    title: 'Do it without help',
-    goal: 'Take an unseen brief, design for it, and survive the critique.',
-    route: '/challenge',
-    criteria: ['Submit a design with no blocking issues', 'Read the feedback on the answers you got right too'],
+    stageId: 'production',
+    title: 'Predict the blast radius',
+    goal: 'Say what a dead dependency does to the caller, before you inject it.',
+    route: '/chaos',
+    criteria: [
+      'Arm a failure and commit to what the caller experiences, correctly',
+      'Run the same failure with mitigations on and with them off',
+    ],
     completion: {
-      kind: 'auto',
-      flag: 'completed-challenge',
-      trigger: 'Ticks once you have submitted a challenge design for evaluation.',
+      kind: 'evidence',
+      flag: 'chaos-predicted',
+      artefact: 'A correct prediction of how a call ends, plus the same failure run both with and without mitigations.',
+      how: 'A failure a fallback absorbs and a failure that drops the call look identical on a status page. Committing to one first is how you find out whether you know the difference.',
+    },
+  },
+  {
+    n: 14,
+    stageId: 'prove',
+    title: 'Find what your design assumed',
+    goal: 'Take an architecture that breaks under pressure and make it hold.',
+    route: '/pressure',
+    criteria: [
+      'Find a pressure test this design fails',
+      'Change the architecture so the same test passes',
+    ],
+    completion: {
+      kind: 'evidence',
+      flag: 'pressure-redesigned',
+      artefact: 'A pressure test you turned from breaking to holding.',
+      how: 'Run the tests, find one that breaks, open the canvas, make the change the finding names, and run the same test again. The second verdict is the one that counts.',
+    },
+  },
+  {
+    n: 15,
+    stageId: 'prove',
+    title: 'Do it without help, to a budget',
+    goal: 'Take an unseen brief with a cost ceiling, design for it, and survive the critique.',
+    route: '/challenge',
+    criteria: [
+      'Submit a design with no blocking issues',
+      'Come in under the budget the brief sets — every reliability question is easy when money is free',
+    ],
+    completion: {
+      kind: 'evidence',
+      flag: 'challenge-passed',
+      artefact: 'A submitted design with no blocking issues that also fits the brief\u2019s cost ceiling.',
+      how: 'Submitting is not passing. The brief carries a budget derived from what a reasonable design for those requirements costs, so buying your way out of every tradeoff puts you over it.',
     },
   },
 ]
@@ -269,7 +361,7 @@ export const STEPS_BY_STAGE: Record<string, CourseStep[]> = Object.fromEntries(
   COURSE_STAGES.map((s) => [s.id, COURSE_STEPS.filter((step) => step.stageId === s.id)]),
 )
 
-/** Every step that is worked in a given lab (two steps share /scaling). */
+/** Every step that is worked in a given lab. */
 export function stepsForRoute(route: string): CourseStep[] {
   return COURSE_STEPS.filter((s) => s.route === route)
 }
@@ -288,6 +380,13 @@ export function doneCount(progress: Progress): number {
   return COURSE_STEPS.filter((s) => isDone(s, progress)).length
 }
 
+/** Steps that need an artefact rather than an activity. */
+export const EVIDENCE_STEPS: CourseStep[] = COURSE_STEPS.filter((s) => s.completion.kind === 'evidence')
+
+export function evidenceCount(progress: Progress): number {
+  return EVIDENCE_STEPS.filter((s) => isDone(s, progress)).length
+}
+
 /** The step the learner should work on now, or null when the course is done. */
 export function currentStep(progress: Progress): CourseStep | null {
   return COURSE_STEPS.find((s) => !isDone(s, progress)) ?? null
@@ -296,9 +395,9 @@ export function currentStep(progress: Progress): CourseStep | null {
 /**
  * Which step this lab represents *right now*.
  *
- * A lab can host more than one step (scaling hosts 8 and 9), so prefer the
- * first one still outstanding; if they are all done, show the last, because
- * that is the furthest the learner has come here.
+ * A lab can host more than one step, so prefer the first one still
+ * outstanding; if they are all done, show the last, because that is the
+ * furthest the learner has come here.
  */
 export function activeStepForRoute(route: string, progress: Progress): CourseStep | null {
   const steps = stepsForRoute(route)

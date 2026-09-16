@@ -9,6 +9,11 @@
 
 import { create } from 'zustand'
 import type { Architecture, Requirements, Scenario, ViewMode } from '../domain/types'
+import type { Mode } from '../nav'
+import type { PredictionRecordEntry } from '../domain/prediction'
+import { predictionFlag } from '../domain/learning'
+import type { PromptSelection } from '../models/prompt'
+import { MINIMAL_SELECTION } from '../models/prompt'
 
 export type Theme = 'dark' | 'light'
 import { cloneArchitecture } from '../domain/builder'
@@ -46,9 +51,25 @@ export function applyTheme(theme: Theme): void {
   document.documentElement.setAttribute('data-theme', theme)
 }
 
+/**
+ * Density follows the detail switch rather than being a third control.
+ *
+ * Engineering detail means more numbers on screen, and more numbers on screen
+ * means tighter rows — otherwise the panels people opened for detail push the
+ * thing they were comparing below the fold. One switch, two effects, no extra
+ * decision for the learner to make.
+ */
+export function applyDensity(mode: ViewMode): void {
+  document.documentElement.setAttribute('data-density', mode === 'engineering' ? 'compact' : 'comfortable')
+}
+
 interface AppState {
   viewMode: ViewMode
   setViewMode: (m: ViewMode) => void
+
+  /** The activity lens over the navigation. null = show everything. */
+  mode: Mode | null
+  setMode: (m: Mode | null) => void
 
   theme: Theme
   setTheme: (t: Theme) => void
@@ -73,18 +94,42 @@ interface AppState {
   progress: Record<string, boolean>
   markProgress: (flag: string) => void
   resetProgress: () => void
+
+  /**
+   * Every prediction the learner has committed to before pressing Run.
+   *
+   * Kept so the course can require *evidence* rather than page visits, and so
+   * the workspace can say which topics have been predicted correctly at least
+   * once. Never aggregated into a score — see domain/prediction.ts.
+   */
+  predictions: PredictionRecordEntry[]
+  recordPrediction: (entry: PredictionRecordEntry) => void
+  clearPredictions: () => void
+
+  /** The working voice prompt, shared between the prompt, quality and eval labs. */
+  promptSelection: PromptSelection
+  setPromptSelection: (s: PromptSelection) => void
 }
 
 const defaultArch = cloneArchitecture(PATTERNS[1].architecture, 'working')
 
 const initialTheme = load<Theme>('theme', 'dark')
 applyTheme(initialTheme)
+const initialViewMode = load<ViewMode>('viewMode', 'simple')
+applyDensity(initialViewMode)
 
 export const useAppStore = create<AppState>((set, get) => ({
-  viewMode: load<ViewMode>('viewMode', 'simple'),
+  viewMode: initialViewMode,
   setViewMode: (m) => {
     save('viewMode', m)
+    applyDensity(m)
     set({ viewMode: m })
+  },
+
+  mode: load<Mode | null>('mode', null),
+  setMode: (m) => {
+    save('mode', m)
+    set({ mode: m })
   },
 
   theme: initialTheme,
@@ -156,5 +201,29 @@ export const useAppStore = create<AppState>((set, get) => ({
   resetProgress: () => {
     save('progress', {})
     set({ progress: {} })
+  },
+
+  predictions: load<PredictionRecordEntry[]>('predictions', []),
+  recordPrediction: (entry) => {
+    // Bounded: this is a learning record, not an analytics pipeline, and an
+    // unbounded array in localStorage eventually fails to serialise.
+    const next = [...get().predictions, entry].slice(-200)
+    save('predictions', next)
+    set({ predictions: next })
+    // A correct prediction is the one piece of evidence the course cannot get
+    // any other way, so it is written as a progress flag too. Only correct
+    // ones, and only from the gate — which records before revealing the
+    // answer, so the flag cannot be earned by reading the result first.
+    if (entry.correct) get().markProgress(predictionFlag(entry.questionId))
+  },
+  clearPredictions: () => {
+    save('predictions', [])
+    set({ predictions: [] })
+  },
+
+  promptSelection: load<PromptSelection>('promptSelection', MINIMAL_SELECTION),
+  setPromptSelection: (sel) => {
+    save('promptSelection', sel)
+    set({ promptSelection: sel })
   },
 }))

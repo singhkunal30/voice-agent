@@ -181,6 +181,26 @@ export const PRESSURE_Q: PredictionQuestion = {
   ],
 }
 
+/**
+ * What shape of system a given load needs.
+ *
+ * Ordered by structural complexity, so a near miss ("I said replicated, it is
+ * distributed") is genuinely nearer than a far one. The interesting wrong
+ * answer is almost always one tier too high: distribution feels like the
+ * grown-up choice long before the arithmetic asks for it.
+ */
+export const INFRA_TIER_Q: PredictionQuestion = {
+  id: 'infra-tier',
+  prompt: 'Before you size it: what shape of system does this load need?',
+  why: 'The jump between tiers is not "more servers" — it is a change in where state lives and what a deploy does to live calls. Guessing the tier forces you to decide which of those changes this load actually triggers.',
+  options: [
+    { id: 'single-box', label: 'One voice server — distribution buys nothing yet' },
+    { id: 'replicated', label: 'Load-balanced replicas with external session state' },
+    { id: 'distributed', label: 'A distributed single-region platform with failure isolation' },
+    { id: 'multi-region', label: 'Multi-region, because one region is now a latency and blast-radius problem' },
+  ],
+}
+
 export const QUALITY_BANDS = [
   { id: 'reliable', max: 0.05, label: 'Under 5% of turns go wrong' },
   { id: 'rough', max: 0.15, label: '5–15% of turns go wrong' },
@@ -199,6 +219,7 @@ export const ALL_QUESTIONS: PredictionQuestion[] = [
   PERCEIVED_LATENCY_Q,
   OUTCOME_Q,
   SATURATION_Q,
+  INFRA_TIER_Q,
   COST_Q,
   PRESSURE_Q,
   QUALITY_Q,

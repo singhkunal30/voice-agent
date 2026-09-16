@@ -20,9 +20,13 @@ const ROUTES = [
   ['/scaling', 'scaling'], ['/chaos', 'chaos'], ['/reliability', 'reliability'],
   ['/cost', 'cost'], ['/decisions', 'decisions'], ['/compare', 'compare'],
   ['/challenge', 'challenge'], ['/observability', 'observability'], ['/knowledge', 'knowledge'],
+  ['/pressure', 'pressure'], ['/prompt', 'prompt'], ['/quality', 'quality'], ['/eval', 'eval'],
 ]
 
-const SCREENSHOT = new Set(['dashboard', 'live-call', 'canvas', 'latency', 'vad', 'scaling', 'cost', 'decisions', 'observability', 'audio'])
+const SCREENSHOT = new Set([
+  'dashboard', 'live-call', 'canvas', 'latency', 'vad', 'scaling', 'cost', 'decisions', 'observability', 'audio',
+  'pressure', 'prompt', 'quality', 'eval', 'stt',
+])
 
 const browser = await chromium.launch({ ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}) })
 const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } })

@@ -3,8 +3,11 @@ import {
   COURSE_LENGTH,
   COURSE_STAGES,
   COURSE_STEPS,
+  EVIDENCE_STEPS,
   STEPS_BY_STAGE,
   STEP_NUMBERS_BY_ROUTE,
+  evidenceCount,
+  predictionFlag,
   activeStepForRoute,
   courseNeighbours,
   currentStep,
@@ -60,7 +63,12 @@ describe('course shape', () => {
 
   it('every step explains how it completes, in the learner\'s words', () => {
     for (const s of COURSE_STEPS) {
-      const text = s.completion.kind === 'auto' ? s.completion.trigger : s.completion.prompt
+      const text =
+        s.completion.kind === 'auto'
+          ? s.completion.trigger
+          : s.completion.kind === 'self'
+            ? s.completion.prompt
+            : `${s.completion.artefact} ${s.completion.how}`
       expect(text.length, `step ${s.n} completion copy`).toBeGreaterThan(20)
     }
   })
@@ -112,23 +120,16 @@ describe('locating the learner inside a lab', () => {
     expect(stepsForRoute('/knowledge')).toEqual([])
   })
 
-  it('picks the first outstanding step when one lab hosts several', () => {
-    // /scaling hosts steps 8 and 9 — the rail must show the one still to do.
-    const shared = Object.entries(STEP_NUMBERS_BY_ROUTE).find(([, ns]) => ns.length > 1)
-    expect(shared, 'expected at least one lab to host multiple steps').toBeDefined()
-    const [route, numbers] = shared!
-    expect(activeStepForRoute(route, {})?.n).toBe(numbers[0])
-
-    const firstDone: Progress = {
-      [COURSE_STEPS.find((s) => s.n === numbers[0])!.completion.flag]: true,
+  it('gives every lab exactly one step, so the rail is never ambiguous', () => {
+    for (const [route, numbers] of Object.entries(STEP_NUMBERS_BY_ROUTE)) {
+      expect(numbers.length, `${route} hosts ${numbers.length} steps`).toBe(1)
     }
-    expect(activeStepForRoute(route, firstDone)?.n).toBe(numbers[1])
   })
 
-  it('falls back to the last step once all of a lab\'s steps are done', () => {
-    const shared = Object.entries(STEP_NUMBERS_BY_ROUTE).find(([, ns]) => ns.length > 1)!
-    const [route, numbers] = shared
-    expect(activeStepForRoute(route, allDone)?.n).toBe(numbers[numbers.length - 1])
+  it('shows the step for the lab you are in, done or not', () => {
+    const step = COURSE_STEPS[0]
+    expect(activeStepForRoute(step.route, {})?.n).toBe(step.n)
+    expect(activeStepForRoute(step.route, allDone)?.n).toBe(step.n)
   })
 
   it('STEP_NUMBERS_BY_ROUTE agrees with the steps themselves', () => {
@@ -180,5 +181,45 @@ describe('the course as a spine through the labs', () => {
     for (const [route, numbers] of Object.entries(STEP_NUMBERS_BY_ROUTE)) {
       expect(numbers.length, `${route} hosts ${numbers.length} steps`).toBeLessThanOrEqual(2)
     }
+  })
+})
+
+describe('evidence, not attendance', () => {
+  it('most steps require an artefact rather than an activity', () => {
+    // The brief asks for a clear majority of milestones to be evidence-backed.
+    expect(EVIDENCE_STEPS.length).toBeGreaterThanOrEqual(6)
+    expect(EVIDENCE_STEPS.length).toBeLessThanOrEqual(8)
+  })
+
+  it('every evidence step names the artefact and how to produce it', () => {
+    for (const s of EVIDENCE_STEPS) {
+      if (s.completion.kind !== 'evidence') throw new Error('filtered wrongly')
+      expect(s.completion.artefact.length, `step ${s.n} artefact`).toBeGreaterThan(30)
+      expect(s.completion.how.length, `step ${s.n} how`).toBeGreaterThan(50)
+    }
+  })
+
+  it('counts evidence separately from overall progress', () => {
+    expect(evidenceCount({})).toBe(0)
+    expect(evidenceCount(allDone)).toBe(EVIDENCE_STEPS.length)
+    expect(evidenceCount(allDone)).toBeLessThan(doneCount(allDone))
+  })
+
+  it('prediction evidence uses a flag only a correct prediction can write', () => {
+    expect(predictionFlag('perceived-latency')).toBe('predicted:perceived-latency')
+    // The three prediction-backed steps must not be completable by any flag a
+    // lab sets for merely interacting with it.
+    const flags = COURSE_STEPS.map((s) => s.completion.flag)
+    expect(new Set(flags).size).toBe(flags.length)
+  })
+
+  it('self-assessment is used sparingly — it is the weakest evidence there is', () => {
+    const self = COURSE_STEPS.filter((s) => s.completion.kind === 'self')
+    expect(self.length).toBeLessThanOrEqual(2)
+  })
+
+  it('the course ends on something that cannot be granted by visiting', () => {
+    const last = COURSE_STEPS[COURSE_LENGTH - 1]
+    expect(last.completion.kind).toBe('evidence')
   })
 })

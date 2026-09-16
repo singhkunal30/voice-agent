@@ -4,6 +4,8 @@ import { computeCost, costLevers, DEFAULT_COST_INPUTS, DEFAULT_PRICING, type Cos
 import { Assumption, Callout, PageHeader, Panel, Stat, fmtNum, fmtUsd } from '../ui/primitives'
 import { NumberInput, Slider, Toggle } from '../ui/controls'
 import { useAppStore } from '../state/store'
+import { COST_BANDS, COST_Q, bandFor } from '../domain/prediction'
+import { PredictionGate } from '../ui/Prediction'
 
 const CATEGORY_COLORS: Record<string, string> = {
   speech: 'rgb(var(--good))',
@@ -70,13 +72,28 @@ export default function CostLab() {
         right={<Assumption>Example pricing, not vendor quotes</Assumption>}
       />
 
-      <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
-        <Stat label="Cost / call" value={fmtUsd(result.usdPerCall, 4)} tone="accent" />
-        <Stat label="Cost / minute" value={fmtUsd(result.usdPerMinute, 4)} />
-        <Stat label="Daily" value={fmtUsd(result.usdPerDay)} />
-        <Stat label="Monthly" value={fmtUsd(result.usdPerMonth)} tone="accent" />
-        <Stat label="Annual" value={fmtUsd(result.usdPerYear)} />
-      </div>
+      <PredictionGate
+        question={COST_Q}
+        route="/cost"
+        actual={bandFor(result.usdPerCall, COST_BANDS).id}
+        resetKey={`${inputs.callsPerDay}:${inputs.avgCallMinutes}:${inputs.recordingEnabled}`}
+        className="mb-4 space-y-4"
+        note={
+          <>
+            {fmtNum(inputs.callsPerDay)} calls a day, {inputs.avgCallMinutes.toFixed(1)} minutes each, roughly{' '}
+            {inputs.turnsPerCall} turns per call, recording {inputs.recordingEnabled ? 'on' : 'off'}. Four vendors bill
+            you: speech in, speech out, the model, and the phone line.
+          </>
+        }
+      >
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+          <Stat label="Cost / call" value={fmtUsd(result.usdPerCall, 4)} tone="accent" />
+          <Stat label="Cost / minute" value={fmtUsd(result.usdPerMinute, 4)} />
+          <Stat label="Daily" value={fmtUsd(result.usdPerDay)} />
+          <Stat label="Monthly" value={fmtUsd(result.usdPerMonth)} tone="accent" />
+          <Stat label="Annual" value={fmtUsd(result.usdPerYear)} />
+        </div>
+      </PredictionGate>
 
       <div className="grid gap-4 xl:grid-cols-[340px,1fr]">
         <div className="space-y-3">

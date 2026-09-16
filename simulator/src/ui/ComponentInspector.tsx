@@ -6,13 +6,15 @@
  * (in editable mode) the live configuration knobs.
  */
 
+import { useMemo, useState } from 'react'
 import type { ArchNode } from '../domain/types'
 import { getSpec } from '../registry/components'
 import { formatLabel } from '../models/audio'
-import { Assumption, Badge, KV, fmtMs } from './primitives'
+import { Assumption, Badge, KV, fmtMs, fmtUsd } from './primitives'
 import { LearnBox } from './LearnBox'
 import { NumberInput, Select, Toggle } from './controls'
 import { useAppStore } from '../state/store'
+import { removalConsequence } from '../models/whatIf'
 
 export function ComponentInspector({
   node,
@@ -30,6 +32,21 @@ export function ComponentInspector({
   const spec = getSpec(node.specId)
   const viewMode = useAppStore((s) => s.viewMode)
   const engineering = viewMode === 'engineering'
+  const arch = useAppStore((s) => s.workingArchitecture)
+  const requirements = useAppStore((s) => s.activeRequirements)
+  const [whatIfOpen, setWhatIfOpen] = useState(false)
+
+  // Computed only when asked for: the removal analysis re-runs the validator
+  // and the cost model, and the inspector opens on every node click.
+  const consequence = useMemo(() => {
+    if (!whatIfOpen) return null
+    try {
+      return removalConsequence(arch, node.id, requirements ?? undefined)
+    } catch {
+      // The node is not in the working architecture (a pattern preview, say).
+      return null
+    }
+  }, [whatIfOpen, arch, node.id, requirements])
 
   return (
     <div className="flex h-full flex-col">
@@ -51,6 +68,100 @@ export function ComponentInspector({
         <section>
           <h3 className="label">What is it?</h3>
           <p className="text-sm text-ink-200">{spec.description}</p>
+        </section>
+
+        {/* Subtraction teaches what addition cannot. Every box on a diagram
+            looks necessary because it is there; the only way to find out which
+            ones are load-bearing is to take one away. */}
+        <section className="rounded-md border border-ink-750 bg-ink-850/40 p-2.5">
+          <button
+            className="flex w-full items-center gap-2 text-left"
+            onClick={() => setWhatIfOpen((o) => !o)}
+            aria-expanded={whatIfOpen}
+          >
+            <span className={`text-xs text-ink-500 transition-transform ${whatIfOpen ? 'rotate-90' : ''}`} aria-hidden>
+              ▶
+            </span>
+            <span className="text-sm font-semibold text-ink-100">What if this were not here?</span>
+          </button>
+          {whatIfOpen &&
+            (consequence ? (
+              <div className="mt-2.5 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`chip ${
+                      consequence.severity === 'fatal'
+                        ? 'tone-bad'
+                        : consequence.severity === 'degraded'
+                          ? 'tone-warn'
+                          : 'tone-neutral'
+                    }`}
+                  >
+                    {consequence.severity === 'fatal'
+                      ? '✕ load-bearing'
+                      : consequence.severity === 'degraded'
+                        ? '▲ costly to remove'
+                        : '· removable here'}
+                  </span>
+                  {consequence.costDeltaPerMonth < 0 && (
+                    <span className="chip tone-good">saves {fmtUsd(-consequence.costDeltaPerMonth, 0)}/mo</span>
+                  )}
+                </div>
+                <p className="text-sm leading-relaxed text-ink-200">{consequence.headline}</p>
+                <div>
+                  <h4 className="label">What stops working</h4>
+                  <ul className="space-y-1">
+                    {consequence.breaks.map((b, i) => (
+                      <li key={i} className="flex gap-1.5 text-xs leading-relaxed text-ink-300">
+                        <span className="text-bad" aria-hidden>
+                          ✕
+                        </span>
+                        {b}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="label">What genuinely improves</h4>
+                  <ul className="space-y-1">
+                    {consequence.gains.map((g, i) => (
+                      <li key={i} className="flex gap-1.5 text-xs leading-relaxed text-ink-400">
+                        <span className="text-good" aria-hidden>
+                          ✓
+                        </span>
+                        {g}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="label">What you would do instead</h4>
+                  <p className="text-xs leading-relaxed text-ink-300">{consequence.insteadYouWould}</p>
+                </div>
+                {consequence.newIssues.length > 0 && (
+                  <div>
+                    <h4 className="label">Rules this removal would break</h4>
+                    <ul className="space-y-1">
+                      {consequence.newIssues.slice(0, 4).map((issue) => (
+                        <li key={issue.ruleId} className="text-xs leading-relaxed text-ink-400">
+                          <b className="text-ink-200">{issue.title}</b> — {issue.why}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {consequence.shiftsLoadTo.length > 0 && (
+                  <p className="text-2xs leading-relaxed text-ink-500">
+                    Load this component absorbed moves to: {consequence.shiftsLoadTo.join(', ')}.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-ink-500">
+                This component is not part of the working architecture, so there is nothing to remove it from. Open it
+                on the canvas to run the analysis.
+              </p>
+            ))}
         </section>
 
         <section>

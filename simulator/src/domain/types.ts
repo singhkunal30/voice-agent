@@ -702,6 +702,16 @@ export interface Challenge {
   id: string
   title: string
   requirements: Requirements
+  /**
+   * Cost ceiling per call, in USD, that the design has to come in under.
+   *
+   * A design brief without a budget is a wish list: every reliability question
+   * has an obvious answer when money is free. The ceiling is derived from a
+   * reasonable reference design for the same requirements and then tightened
+   * or loosened by the brief's budget posture, so it is always achievable —
+   * but never while also buying every premium option.
+   */
+  budgetUsdPerCall?: number
   questions: ChallengeQuestion[]
   /** Spec ids a passing architecture is expected to contain. */
   expectedComponents: string[]

@@ -39,6 +39,8 @@ export function CourseRail({ route }: { route: string }) {
   const stage = stageOf(step)
   const siblings = stepsForRoute(route)
   const nextLab = next ? LAB_BY_ROUTE[next.route] : null
+  // Bound once so TypeScript can narrow the union inside the callbacks below.
+  const completion = step.completion
 
   return (
     <div className="border-b border-ink-800 bg-ink-900/60">
@@ -88,16 +90,23 @@ export function CourseRail({ route }: { route: string }) {
               ) : (
                 <span className="chip border-good/40 bg-good/10 text-good">Course complete</span>
               )
-            ) : step.completion.kind === 'self' ? (
+            ) : completion.kind === 'self' ? (
               <button
                 className="btn btn-sm btn-primary"
-                onClick={() => markProgress(step.completion.flag)}
-                title={step.completion.prompt}
+                onClick={() => markProgress(completion.flag)}
+                title={completion.prompt}
               >
                 ✓ I can do this
               </button>
+            ) : completion.kind === 'evidence' ? (
+              <span
+                className="chip border-media/40 bg-media/10 text-media"
+                title={`${completion.artefact} ${completion.how}`}
+              >
+                ◉ needs evidence
+              </span>
             ) : (
-              <span className="chip border-ink-700 bg-ink-850 text-ink-400" title={step.completion.trigger}>
+              <span className="chip border-ink-700 bg-ink-850 text-ink-400" title={completion.trigger}>
                 ticks itself
               </span>
             )}
@@ -126,9 +135,11 @@ export function CourseRail({ route }: { route: string }) {
                   How this step completes
                 </div>
                 <p className="text-sm text-ink-300">
-                  {step.completion.kind === 'auto'
-                    ? step.completion.trigger
-                    : `You decide. ${step.completion.prompt}`}
+                  {completion.kind === 'auto'
+                    ? completion.trigger
+                    : completion.kind === 'self'
+                      ? `You decide. ${completion.prompt}`
+                      : `Evidence required: ${completion.artefact} ${completion.how}`}
                 </p>
                 {siblings.length > 1 && (
                   <p className="mt-2 text-xs text-ink-500">

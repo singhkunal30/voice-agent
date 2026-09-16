@@ -15,6 +15,8 @@ import type { RegionId, Requirements } from '../domain/types'
 import { Assumption, Badge, Callout, PageHeader, Panel, Stat, fmtMs, fmtNum } from '../ui/primitives'
 import { NumberInput, Segmented, Select, Slider, Toggle } from '../ui/controls'
 import { useAppStore } from '../state/store'
+import { INFRA_TIER_Q } from '../domain/prediction'
+import { PredictionGate } from '../ui/Prediction'
 
 type Tab = 'sizing' | 'connections' | 'autoscaling' | 'regions'
 
@@ -58,14 +60,16 @@ export default function ScalingLab() {
   const plan = useMemo(() => planInfrastructure(req), [req])
 
   // The default load already sits in the thousands, so ticking on the current
-  // value would complete steps 8 and 9 the moment the page opened. Only count
-  // a figure the learner actually dialled in.
+  // value would complete the step the moment the page opened. The course step
+  // needs two things: a load the learner actually dialled past a thousand, and
+  // a tier they predicted correctly before the bill of materials appeared.
   const initialConcurrent = useRef(concurrent)
+  const pushedTheLoad = useRef(false)
+  const predictedTier = useAppStore((s) => s.progress['predicted:infra-tier'])
   useEffect(() => {
-    if (concurrent === initialConcurrent.current) return
-    if (concurrent >= 100) markProgress('scaled-hundreds')
-    if (concurrent >= 1000) markProgress('scaled-thousands')
-  }, [concurrent, markProgress])
+    if (concurrent !== initialConcurrent.current && concurrent >= 1000) pushedTheLoad.current = true
+    if (pushedTheLoad.current && predictedTier) markProgress('scaling-predicted')
+  }, [concurrent, predictedTier, markProgress])
 
   return (
     <div className="p-4">
@@ -129,7 +133,19 @@ export default function ScalingLab() {
             </Panel>
           </div>
 
-          <div className="space-y-4">
+          <PredictionGate
+            question={INFRA_TIER_Q}
+            route="/scaling"
+            actual={plan.tier}
+            resetKey={String(concurrent)}
+            note={
+              <>
+                {fmtNum(concurrent)} concurrent calls, {fmtNum(callsPerDay)} a day, {latencyTarget} ms latency target,
+                handoff {handoff ? 'required' : 'not required'}. Remember that a voice call holds its connection for
+                minutes, so capacity is measured in simultaneous connections rather than requests per second.
+              </>
+            }
+          >
             <div className="grid gap-2 sm:grid-cols-4">
               <Stat label="Tier" value={plan.tierLabel} tone="accent" />
               <Stat label="Media instances" value={plan.components.find((c) => c.specId === 'media-gateway')?.instances ?? 1}
@@ -174,7 +190,7 @@ export default function ScalingLab() {
                 {plan.assumptions.map((a, i) => <li key={i}>· {a}</li>)}
               </ul>
             </Panel>
-          </div>
+          </PredictionGate>
         </div>
       )}
 

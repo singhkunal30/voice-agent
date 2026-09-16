@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { evaluateArchitecture, generateChallenge } from '../challenges/engine'
+import { evaluateArchitecture, evaluateBudget, generateChallenge } from '../challenges/engine'
 import type { Challenge, EvaluationResult } from '../domain/types'
 import { Assumption, Badge, Callout, KV, PageHeader, Panel, Stat, fmtMs, fmtNum, fmtUsd } from '../ui/primitives'
 import { ArchCanvas } from '../ui/ArchCanvas'
@@ -21,6 +21,13 @@ export default function ChallengeLab() {
   const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null)
 
   const challenge: Challenge = useMemo(() => generateChallenge(seed), [seed])
+  const budget = useMemo(
+    () =>
+      challenge.budgetUsdPerCall === undefined
+        ? null
+        : evaluateBudget(challenge.requirements, challenge.budgetUsdPerCall),
+    [challenge],
+  )
 
   const newChallenge = () => {
     setSeed(Math.random().toString(36).slice(2, 8))
@@ -31,9 +38,16 @@ export default function ChallengeLab() {
   }
 
   const submit = () => {
-    setEvaluation(evaluateArchitecture(arch, challenge.requirements))
+    const result = evaluateArchitecture(arch, challenge.requirements)
+    setEvaluation(result)
     setPhase('submitted')
-    markProgress('completed-challenge')
+    // Submitting is not passing. The course step wants a design with no
+    // blocking violations that also fits the brief's cost ceiling — buying
+    // your way out of every tradeoff is exactly what the budget is there to
+    // catch.
+    const blocking =
+      result.findings.some((f) => f.kind === 'violates') || result.issues.some((i) => i.severity === 'error')
+    if (!blocking && (budget === null || budget.withinBudget)) markProgress('challenge-passed')
   }
 
   useEffect(() => {
@@ -88,6 +102,38 @@ export default function ChallengeLab() {
                 ]}
               />
             </div>
+
+            {/* A brief without a budget is a wish list: every reliability
+                question has an obvious answer when money is free. */}
+            {challenge.budgetUsdPerCall !== undefined && (
+              <div className="mt-4 rounded-md border border-warn/30 bg-warn/[0.05] p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-semibold text-ink-100">
+                    <span className="mr-1.5" aria-hidden>
+                      ⌗
+                    </span>
+                    Budget ceiling: {fmtUsd(challenge.budgetUsdPerCall, 4)} per call
+                  </span>
+                  <span className="chip tone-neutral">
+                    ≈ {fmtUsd(challenge.budgetUsdPerCall * challenge.requirements.callsPerDay * 30, 0)}/month
+                  </span>
+                  {budget && (
+                    <span className={`chip ${budget.withinBudget ? 'tone-good' : 'tone-bad'}`}>
+                      {budget.withinBudget
+                        ? `✓ your design: ${fmtUsd(budget.usdPerCall, 4)}`
+                        : `✕ your design: ${fmtUsd(budget.usdPerCall, 4)} — over by ${fmtUsd(budget.overBy, 4)}`}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1.5 text-xs leading-relaxed text-ink-400">
+                  {budget?.withinBudget
+                    ? `Inside the ceiling. Check what you gave up to get there — the dominant line is ${budget.dominant}`
+                    : budget
+                      ? `Over the ceiling. The largest line is ${budget.dominant} Cutting it is a quality decision, not an efficiency one: say which quality you are selling.`
+                      : 'Derived from what a reasonable reference design costs for these exact requirements, adjusted for the brief\u2019s budget posture.'}
+                </p>
+              </div>
+            )}
             {phase === 'brief' && (
               <div className="mt-4 flex gap-2">
                 <button className="btn btn-primary" onClick={() => setPhase('answering')}>Start designing →</button>

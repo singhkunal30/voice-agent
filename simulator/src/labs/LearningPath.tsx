@@ -2,14 +2,17 @@ import { Link } from 'react-router-dom'
 import {
   COURSE_LENGTH,
   COURSE_STAGES,
+  EVIDENCE_STEPS,
   STEPS_BY_STAGE,
   currentStep,
   doneCount,
+  evidenceCount,
   isDone,
   type CourseStep,
 } from '../domain/learning'
 import { useAppStore } from '../state/store'
-import { PageHeader } from '../ui/primitives'
+import { PageHeader, Panel } from '../ui/primitives'
+import { PredictionRecord } from '../ui/Prediction'
 import { LAB_BY_ROUTE } from '../nav'
 
 /**
@@ -24,6 +27,7 @@ export default function LearningPath() {
   const progress = useAppStore((s) => s.progress)
   const resetProgress = useAppStore((s) => s.resetProgress)
   const done = doneCount(progress)
+  const evidence = evidenceCount(progress)
   const current = currentStep(progress)
 
   return (
@@ -31,7 +35,18 @@ export default function LearningPath() {
       <PageHeader
         title="Guided course"
         question="What order should I learn this in?"
-        subtitle="Thirteen steps in five stages. Each one drops you into the lab that teaches it, and the step travels with you — you never have to come back here to remember where you were. Progress lives in this browser only."
+        subtitle={
+          <>
+            Fifteen steps in six stages. Each one drops you into the lab that teaches it, and the step travels with you
+            — you never have to come back here to remember where you were.{' '}
+            <b className="text-ink-200">
+              {EVIDENCE_STEPS.length} of the {COURSE_LENGTH} need evidence rather than activity
+            </b>
+            : a prediction you committed to and got right, a quality problem you diagnosed and removed, an architecture
+            you turned from breaking to holding. Visiting a page has never completed anything here, and now going
+            through the motions does not either. Progress lives in this browser only.
+          </>
+        }
         right={
           <button className="btn btn-sm" onClick={resetProgress} title="Clear local progress">
             ↻ Reset
@@ -49,7 +64,9 @@ export default function LearningPath() {
                 ? 'Course complete'
                 : `${done} of ${COURSE_LENGTH} steps done`}
           </span>
-          <span className="font-mono text-xs text-ink-500">{Math.round((done / COURSE_LENGTH) * 100)}%</span>
+          <span className="font-mono text-xs text-ink-500">
+            {evidence}/{EVIDENCE_STEPS.length} evidence · {Math.round((done / COURSE_LENGTH) * 100)}%
+          </span>
         </div>
         <div className="h-1.5 overflow-hidden rounded-full bg-ink-800">
           <div
@@ -124,6 +141,15 @@ export default function LearningPath() {
           )
         })}
       </div>
+
+      <Panel className="mt-8" title="What you have predicted">
+        <PredictionRecord />
+        <p className="mt-3 text-xs leading-relaxed text-ink-500">
+          Predictions are the course&apos;s hardest currency: the gate records them before it reveals the answer, so a
+          correct one cannot be earned by reading the result first. A topic you have never been wrong about is a topic
+          you have not stressed hard enough.
+        </p>
+      </Panel>
     </div>
   )
 }
@@ -156,9 +182,17 @@ function StepRow({ step, done, current }: { step: CourseStep; done: boolean; cur
           <span className="block truncate text-xs text-ink-500">{step.goal}</span>
         </span>
         <span className="hidden shrink-0 items-center gap-2 sm:flex">
-          {step.completion.kind === 'self' && !done && (
+          {!done && step.completion.kind === 'self' && (
             <span className="chip border-ink-700 bg-ink-850 text-ink-500" title={step.completion.prompt}>
               you decide
+            </span>
+          )}
+          {!done && step.completion.kind === 'evidence' && (
+            <span
+              className="chip border-media/40 bg-media/10 text-media"
+              title={`${step.completion.artefact} ${step.completion.how}`}
+            >
+              ◉ evidence
             </span>
           )}
           <span className="text-2xs text-ink-600">{lab?.label}</span>

@@ -60,6 +60,41 @@ export function GroupIcon({ name, className = 'h-4 w-4' }: { name: string; class
           <path d="m10.3 5.7-1.2 3.4-3.4 1.2 1.2-3.4 3.4-1.2Z" />
         </svg>
       )
+    case 'stack':
+      return (
+        <svg {...common}>
+          <path d="M8 2 1.8 5 8 8l6.2-3L8 2Z" />
+          <path d="m1.8 8.2 6.2 3 6.2-3M1.8 11.2l6.2 3 6.2-3" />
+        </svg>
+      )
+    case 'bolt':
+      return (
+        <svg {...common}>
+          <path d="M8.8 1.8 3.6 9h3.4l-.8 5.2L12.4 7H9l-.2-5.2Z" />
+        </svg>
+      )
+    case 'scope':
+      return (
+        <svg {...common}>
+          <circle cx="8" cy="8" r="5.2" />
+          <circle cx="8" cy="8" r="1.6" />
+          <path d="M8 1.2v2M8 12.8v2M1.2 8h2M12.8 8h2" />
+        </svg>
+      )
+    case 'flag':
+      return (
+        <svg {...common}>
+          <path d="M3.8 14V2" />
+          <path d="M3.8 2.8h7.4l-1.6 2.6 1.6 2.6H3.8" />
+        </svg>
+      )
+    case 'book':
+      return (
+        <svg {...common}>
+          <path d="M2.6 3.2c1.8-.7 3.6-.7 5.4 0v9.6c-1.8-.7-3.6-.7-5.4 0V3.2Z" />
+          <path d="M13.4 3.2c-1.8-.7-3.6-.7-5.4 0v9.6c1.8-.7 3.6-.7 5.4 0V3.2Z" />
+        </svg>
+      )
     default:
       return (
         <svg {...common}>

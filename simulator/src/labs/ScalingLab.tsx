@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Area, AreaChart, CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import {
   connectionComparison,
@@ -57,7 +57,12 @@ export default function ScalingLab() {
 
   const plan = useMemo(() => planInfrastructure(req), [req])
 
+  // The default load already sits in the thousands, so ticking on the current
+  // value would complete steps 8 and 9 the moment the page opened. Only count
+  // a figure the learner actually dialled in.
+  const initialConcurrent = useRef(concurrent)
   useEffect(() => {
+    if (concurrent === initialConcurrent.current) return
     if (concurrent >= 100) markProgress('scaled-hundreds')
     if (concurrent >= 1000) markProgress('scaled-thousands')
   }, [concurrent, markProgress])

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Bar, BarChart, Cell, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { computeCost, costLevers, DEFAULT_COST_INPUTS, DEFAULT_PRICING, type CostInputs } from '../models/cost'
 import { Assumption, Callout, PageHeader, Panel, Stat, fmtNum, fmtUsd } from '../ui/primitives'
@@ -38,9 +38,12 @@ export default function CostLab() {
   const result = useMemo(() => computeCost(inputs), [inputs])
   const levers = useMemo(() => costLevers(inputs), [inputs])
 
+  // Step 11 is about *moving* a number, so tick on the first real edit rather
+  // than on arrival.
+  const firstInputs = useRef(inputs)
   useEffect(() => {
-    markProgress('optimized-cost')
-  }, [markProgress])
+    if (inputs !== firstInputs.current) markProgress('optimized-cost')
+  }, [inputs, markProgress])
 
   // Cost vs volume curve — shows fixed-cost amortisation.
   const volumeCurve = useMemo(

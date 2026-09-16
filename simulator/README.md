@@ -46,6 +46,7 @@ docker compose up --build       # simulator at http://localhost:8000/lab
 npm run verify   # typecheck + lint + 194 unit/integration tests + production build
 npm test         # tests only
 npm run smoke    # optional: browser smoke test over all 26 routes (needs `npx playwright install`)
+npm run coursecheck  # optional: walks the 13-step course and checks the thread never drops
 ```
 
 ---
@@ -73,7 +74,7 @@ the hand-drawn SVG diagrams.
 | Section | What you do there |
 |---|---|
 | **Home** | Three ways in, your progress, the full lab map |
-| **Guided course** | 13 steps in 5 stages, from "what is a component" to "design under pressure" |
+| **Guided course** | 13 steps in 5 stages, from "what is a component" to "design under pressure". The step follows you into each lab, so you never lose your place |
 | **Scenarios** | 12 realistic briefs; activating one threads its requirements through every other lab |
 | **Live call** | Run a full call: signalling → audio frames → VAD → STT → LLM → tools → TTS → playback. Interrupt it. Break it. |
 | **Architecture canvas** | Drag, connect, configure, validate, simulate, export (JSON/PNG/SVG) |
@@ -108,7 +109,7 @@ simulator/
 │   ├── domain/          Types, architecture builder DSL, learning progression
 │   │   ├── types.ts     THE domain model — every lab reads these types
 │   │   ├── builder.ts   Programmatic architecture construction
-│   │   └── learning.ts  13-level progression
+│   │   └── learning.ts  The guided course — the spine every surface reads
 │   ├── engine/          The deterministic simulation kernel
 │   │   ├── rng.ts       Seeded PRNG (SplitMix32) — no Math.random anywhere
 │   │   ├── queue.ts     Binary min-heap, (time, seq) total ordering
@@ -137,6 +138,37 @@ simulator/
 │   └── theme.css        Colour tokens for both themes (Tailwind and the SVGs read the same vars)
 └── scripts/smoke.mjs    Optional browser smoke test
 ```
+
+---
+
+## The guided course
+
+Twenty-six labs is a menu, not a curriculum. `src/domain/learning.ts` turns them
+into an ordered path — five stages, thirteen steps — and every surface reads
+from it: the course page, the sidebar step numbers, the home page's "continue",
+the prev/next footer, and the **course rail**.
+
+The rail is the important part. The course used to stop at the door of every
+lab: you would pick step 4, land in the VAD lab, and lose all sense of where you
+were, what counted as finished, or where to go next. The rail follows you in and
+carries the step's number, its goal, what "done" means here, and the button that
+continues the path. Labs that are *not* course steps say so, so reference
+material does not read like a step you forgot.
+
+Two rules keep it honest:
+
+1. **Visiting a page never completes anything.** Each step is either `auto`
+   (earned by an interaction the learner actually performs) or `self` (a
+   judgment call they tick themselves, with the question stated). Progress you
+   did not earn is worse than no progress bar — and this was a real bug: five
+   steps used to tick on arrival, and the scaling lab completed two steps at
+   once because its default load was already in the thousands.
+2. **Each step states what "done" means** in the learner's words. The lab's own
+   briefing says what to *click*; the step says what you should be able to *say*
+   afterwards.
+
+`npm run coursecheck` walks the whole path in a browser and fails if the rail is
+missing, names the wrong step, or if touring every lab grants progress.
 
 ---
 

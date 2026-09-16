@@ -21,11 +21,14 @@ const STATUS_DOT: Record<SimEvent['status'], string> = {
  * and duration. Click an event to inspect its full detail. Autoscrolls during
  * playback.
  */
-export function EventTimeline({ events, autoScroll = true, height = 'h-[420px]', emptyHint }: {
+export function EventTimeline({ events, autoScroll = true, height = 'h-[420px]', emptyHint, onInspect }: {
   events: SimEvent[]
   autoScroll?: boolean
   height?: string
   emptyHint?: string
+  /** Fired when the learner opens an event. Lets the course tell real
+   *  inspection apart from merely having the timeline on screen. */
+  onInspect?: (event: SimEvent) => void
 }) {
   const [selected, setSelected] = useState<SimEvent | null>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -49,7 +52,11 @@ export function EventTimeline({ events, autoScroll = true, height = 'h-[420px]',
             {events.map((e) => (
               <tr
                 key={e.seq}
-                onClick={() => setSelected(selected?.seq === e.seq ? null : e)}
+                onClick={() => {
+                  const opening = selected?.seq !== e.seq
+                  setSelected(opening ? e : null)
+                  if (opening) onInspect?.(e)
+                }}
                 className={`cursor-pointer border-b border-ink-900 align-top transition-colors hover:bg-ink-900 ${
                   selected?.seq === e.seq ? 'bg-ink-850' : ''
                 }`}

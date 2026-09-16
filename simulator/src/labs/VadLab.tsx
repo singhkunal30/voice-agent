@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { BARGE_IN_SEQUENCE, generateEnergyTrack, runVad } from '../models/vad'
 import { Assumption, Badge, Callout, PageHeader, Panel } from '../ui/primitives'
 import { Slider } from '../ui/controls'
@@ -17,9 +17,14 @@ export default function VadLab() {
     [track, threshold, minSpeech, silenceTimeout],
   )
 
+  // The default 600 ms timeout is already shorter than the scripted thinking
+  // pause, so a premature cut-off exists the moment the page loads. Step 4 is
+  // about *causing* one, so only count settings the learner has moved.
+  const initialSettings = useRef(`${threshold}/${minSpeech}/${silenceTimeout}`)
   useEffect(() => {
-    if (outcome.problems.some((p) => p.kind === 'premature')) markProgress('tuned-vad')
-  }, [outcome, markProgress])
+    const touched = `${threshold}/${minSpeech}/${silenceTimeout}` !== initialSettings.current
+    if (touched && outcome.problems.some((p) => p.kind === 'premature')) markProgress('tuned-vad')
+  }, [outcome, threshold, minSpeech, silenceTimeout, markProgress])
 
   const totalMs = track[track.length - 1]?.t ?? 1
   const W = 900

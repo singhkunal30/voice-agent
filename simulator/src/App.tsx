@@ -4,7 +4,15 @@ import { useAppStore } from './state/store'
 import { GROUP_BY_ROUTE, LAB_BY_ROUTE, NAV_GROUPS, labNeighbours } from './nav'
 import { CommandPalette } from './ui/CommandPalette'
 import { GroupIcon } from './ui/GroupIcon'
-import { LEARNING_LEVELS } from './domain/learning'
+import {
+  COURSE_LENGTH,
+  STEP_NUMBERS_BY_ROUTE,
+  activeStepForRoute,
+  courseNeighbours,
+  doneCount,
+  isCourseRoute,
+} from './domain/learning'
+import { CourseRail, OffPathNote } from './ui/CourseRail'
 
 // Route-level code splitting keeps the initial bundle lean.
 const Dashboard = lazy(() => import('./labs/Dashboard'))
@@ -47,8 +55,22 @@ export default function App() {
 
   const lab = LAB_BY_ROUTE[location.pathname]
   const group = GROUP_BY_ROUTE[location.pathname]
-  const { prev, next } = labNeighbours(location.pathname)
-  const doneLevels = LEARNING_LEVELS.filter((l) => progress[l.flag]).length
+  const doneLevels = doneCount(progress)
+
+  // Reading order follows the *course* whenever this lab is part of it, so
+  // "next" continues the curriculum instead of silently dropping you out of it
+  // into whatever happens to sit next in the menu.
+  const courseStep = activeStepForRoute(location.pathname, progress)
+  const onCourse = isCourseRoute(location.pathname)
+  const menuNeighbours = labNeighbours(location.pathname)
+  const courseNext = courseStep ? courseNeighbours(courseStep).next : null
+  const coursePrev = courseStep ? courseNeighbours(courseStep).prev : null
+  const prev = onCourse && coursePrev
+    ? { route: coursePrev.route, label: coursePrev.title, blurb: `Step ${coursePrev.n} · ${coursePrev.goal}` }
+    : menuNeighbours.prev
+  const next = onCourse && courseNext
+    ? { route: courseNext.route, label: courseNext.title, blurb: `Step ${courseNext.n} · ${courseNext.goal}` }
+    : menuNeighbours.next
 
   // Only the group you are in stays open, so the sidebar shows a handful of
   // choices rather than all twenty-six at once.
@@ -154,6 +176,17 @@ export default function App() {
                         }
                       >
                         {item.label}
+                        {/* Course steps are numbered in the menu too, so the
+                            path through twenty-six labs is visible wherever
+                            you happen to be looking. */}
+                        {navOpen && STEP_NUMBERS_BY_ROUTE[item.route] && (
+                          <span
+                            className="ml-1.5 font-mono text-2xs text-accent/60"
+                            title={`Course step ${STEP_NUMBERS_BY_ROUTE[item.route].join(' & ')}`}
+                          >
+                            {STEP_NUMBERS_BY_ROUTE[item.route].join(',')}
+                          </span>
+                        )}
                       </NavLink>
                     ))}
                   </div>
@@ -172,13 +205,13 @@ export default function App() {
             <div className="mb-1 flex items-baseline justify-between text-2xs">
               <span className="font-medium text-ink-300">Course progress</span>
               <span className="font-mono text-ink-500">
-                {doneLevels}/{LEARNING_LEVELS.length}
+                {doneLevels}/{COURSE_LENGTH}
               </span>
             </div>
             <div className="h-1 overflow-hidden rounded-full bg-ink-800">
               <div
                 className="h-full rounded-full bg-accent transition-all"
-                style={{ width: `${(doneLevels / LEARNING_LEVELS.length) * 100}%` }}
+                style={{ width: `${(doneLevels / COURSE_LENGTH) * 100}%` }}
               />
             </div>
           </Link>
@@ -243,6 +276,15 @@ export default function App() {
         </header>
 
         <main id="lab-scroll" className="min-h-0 flex-1 overflow-y-auto">
+          {/* The course follows you into the lab. Without this the curriculum
+              stops at the door and every lab feels like an unrelated tool. */}
+          {onCourse ? (
+            <CourseRail route={location.pathname} />
+          ) : (
+            location.pathname !== '/' && location.pathname !== '/learn' && (
+              <OffPathNote route={location.pathname} />
+            )
+          )}
           <Suspense
             fallback={<div className="flex h-full items-center justify-center text-sm text-ink-500">Loading lab…</div>}
           >

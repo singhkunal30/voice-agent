@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_RELIABILITY, simulateCall } from '../engine/callSim'
 import { LLM_PROVIDERS } from '../providers/simulated'
 import { EventTimeline } from '../ui/EventTimeline'
@@ -70,9 +70,13 @@ export default function AgentLab() {
     [llmId, tools, contextTokens, toolFails, dbFails, retries],
   )
 
+  // Step 5 is "run a tool, then break it" — a tool being selected by default is
+  // not the learner having done either.
+  const brokeATool = useRef(false)
   useEffect(() => {
-    if (tools.length > 0) markProgress('used-tools')
-  }, [tools.length, markProgress])
+    if (tools.length > 0 && (toolFails || dbFails)) brokeATool.current = true
+    if (brokeATool.current) markProgress('used-tools')
+  }, [tools.length, toolFails, dbFails, markProgress])
 
   const runtimeEvents = useMemo(
     () =>

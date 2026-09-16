@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_RELIABILITY, simulateCall } from '../engine/callSim'
 import { HANDOFF_SM } from '../models/stateMachines'
 import { EventTimeline } from '../ui/EventTimeline'
@@ -60,9 +60,14 @@ export default function HandoffLab() {
   )
   const playback = usePlayback(handoffEvents)
 
+  // A handoff you have only seen succeed has not taught you anything about
+  // handoffs: require the no-agent branch too.
+  const seenOutcomes = useRef(new Set<string>())
   useEffect(() => {
-    if (playback.state === 'done') markProgress('ran-handoff')
-  }, [playback.state, markProgress])
+    if (playback.state !== 'done') return
+    seenOutcomes.current.add(scenario === 'available' ? 'success' : 'fallback')
+    if (seenOutcomes.current.size === 2) markProgress('ran-handoff')
+  }, [playback.state, scenario, markProgress])
 
   return (
     <div className="p-4">

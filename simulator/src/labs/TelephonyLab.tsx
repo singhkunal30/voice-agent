@@ -1,25 +1,19 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { TELEPHONY_PROVIDERS, getTelephony } from '../providers/simulated'
 import { Rng } from '../engine/rng'
 import { Assumption, Badge, Callout, PageHeader, Panel, Stat, fmtMs } from '../ui/primitives'
 import { Segmented, Select } from '../ui/controls'
-import { useAppStore } from '../state/store'
 
 export default function TelephonyLab() {
   const [providerId, setProviderId] = useState('tel-cpaas')
   const [direction, setDirection] = useState<'inbound' | 'outbound'>('outbound')
   const [seed, setSeed] = useState(1)
-  const markProgress = useAppStore((s) => s.markProgress)
   const provider = getTelephony(providerId)
 
   const call = useMemo(
     () => provider.placeCall({ to: '+91-98xxx', from: '+1-415xxx', direction, region: 'in-mumbai' }, new Rng(`tel-${seed}`)),
     [provider, direction, seed],
   )
-
-  useEffect(() => {
-    markProgress('learned-telephony')
-  }, [markProgress])
 
   return (
     <div className="p-4">

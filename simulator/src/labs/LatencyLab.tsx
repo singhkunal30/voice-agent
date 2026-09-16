@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { computeLatency, DEFAULT_LATENCY_PARAMS, streamingComparison, type LatencyParams } from '../models/latency'
 import { LatencyMilestones, LatencyWaterfall } from '../ui/LatencyWaterfall'
 import { Assumption, Callout, Disclosure, PageHeader, Panel, Stat, fmtMs } from '../ui/primitives'
@@ -15,9 +15,15 @@ export default function LatencyLab() {
   const allStreaming = p.sttStreaming && p.llmStreaming && p.ttsStreaming
   const noneStreaming = !p.sttStreaming && !p.llmStreaming && !p.ttsStreaming
 
+  // Step 3 completes by *comparing*, not by arriving: remember which pipeline
+  // modes the learner has actually put the model into, and tick only once they
+  // have seen both worlds.
+  const seenModes = useRef(new Set<string>())
   useEffect(() => {
-    markProgress('compared-streaming')
-  }, [markProgress])
+    if (allStreaming) seenModes.current.add('streaming')
+    if (noneStreaming) seenModes.current.add('batch')
+    if (seenModes.current.size === 2) markProgress('compared-streaming')
+  }, [allStreaming, noneStreaming, markProgress])
 
   return (
     <div className="p-4">

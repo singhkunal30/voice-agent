@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { DEFAULT_RELIABILITY, simulateCall, type FailureTarget } from '../engine/callSim'
 import { ArchCanvas } from '../ui/ArchCanvas'
 import { EventTimeline } from '../ui/EventTimeline'
@@ -79,9 +79,14 @@ export default function ChaosLab() {
 
   const playback = usePlayback(result.events)
 
+  // The lesson is the *difference* mitigations make, so require having watched
+  // the same failure play out both ways.
+  const ranWith = useRef(new Set<string>())
   useEffect(() => {
-    if (playback.state !== 'idle' && armed.length > 0) markProgress('injected-failures')
-  }, [playback.state, armed.length, markProgress])
+    if (playback.state === 'idle' || armed.length === 0) return
+    ranWith.current.add(mitigations ? 'on' : 'off')
+    if (ranWith.current.size === 2) markProgress('injected-failures')
+  }, [playback.state, armed.length, mitigations, markProgress])
 
   // Which architecture nodes are implicated by the armed failures.
   const failedSpecIds = useMemo(

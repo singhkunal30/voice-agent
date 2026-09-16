@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { DEFAULT_RELIABILITY, simulateCall, type CallSimOptions, type FailureTarget } from '../engine/callSim'
 import { STT_PROVIDERS, TTS_PROVIDERS, LLM_PROVIDERS } from '../providers/simulated'
 import { usePlayback } from '../ui/playback'
@@ -133,9 +133,14 @@ export default function LiveCall() {
   const toggleFailure = (t: FailureTarget) =>
     setFailures((f) => (f.includes(t) ? f.filter((x) => x !== t) : [...f, t]))
 
+  // Step 2 is "play a call AND read three events". Pressing play alone leaves
+  // you with an animation you did not look at.
+  const played = useRef(false)
+  const [inspected, setInspected] = useState(0)
   useEffect(() => {
-    if (playback.state !== 'idle') markProgress('ran-first-call')
-  }, [playback.state, markProgress])
+    if (playback.state !== 'idle') played.current = true
+    if (played.current && inspected >= 3) markProgress('ran-first-call')
+  }, [playback.state, inspected, markProgress])
 
   return (
     <div className="p-4">
@@ -261,7 +266,7 @@ export default function LiveCall() {
               <SimControls playback={playback} />
             </div>
             {playback.state !== 'idle' && playback.visible.length === 0 && null}
-            <EventTimeline events={playback.visible} />
+            <EventTimeline events={playback.visible} onInspect={() => setInspected((n) => n + 1)} />
             {playback.state === 'idle' && (
               <div className="mt-2 text-xs text-ink-500">
                 The full run is already computed ({result.events.length} events, {fmtMs(playback.durationMs)} of virtual time). Playback only animates it — pause, step and speed cannot change the outcome.

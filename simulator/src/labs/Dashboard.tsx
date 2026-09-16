@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAppStore } from '../state/store'
-import { LEARNING_LEVELS } from '../domain/learning'
+import { COURSE_LENGTH, STEP_NUMBERS_BY_ROUTE, currentStep, doneCount } from '../domain/learning'
 import { NAV_GROUPS } from '../nav'
 import { GroupIcon } from '../ui/GroupIcon'
 
@@ -32,8 +32,8 @@ const ENTRY_POINTS = [
 export default function Dashboard() {
   const progress = useAppStore((s) => s.progress)
   const scenario = useAppStore((s) => s.activeScenario)
-  const done = LEARNING_LEVELS.filter((l) => progress[l.flag]).length
-  const nextLevel = LEARNING_LEVELS.find((l) => !progress[l.flag])
+  const done = doneCount(progress)
+  const nextLevel = currentStep(progress)
   const started = done > 0
 
   return (
@@ -50,9 +50,10 @@ export default function Dashboard() {
         >
           <div className="min-w-0 flex-1">
             <div className="text-2xs font-medium text-accent">
-              Step {nextLevel.level} of {LEARNING_LEVELS.length}
+              Step {nextLevel.n} of {COURSE_LENGTH}
             </div>
             <div className="mt-0.5 text-base font-medium text-ink-100">{nextLevel.title}</div>
+            <div className="text-sm text-ink-400">{nextLevel.goal}</div>
           </div>
           <span className="btn btn-primary shrink-0">Continue →</span>
         </Link>
@@ -112,6 +113,17 @@ export default function Dashboard() {
                 className="group -mx-2 flex items-baseline gap-2 rounded px-2 py-1 transition-colors hover:bg-ink-850"
               >
                 <span className="text-sm text-ink-300 group-hover:text-accent">{i.label}</span>
+                {/* Course steps carry their number, so the curriculum is
+                    visible inside the full menu instead of being a separate
+                    list you have to hold in your head. */}
+                {STEP_NUMBERS_BY_ROUTE[i.route] && (
+                  <span
+                    className="shrink-0 font-mono text-2xs text-accent/70"
+                    title={`Course step ${STEP_NUMBERS_BY_ROUTE[i.route].join(' & ')}`}
+                  >
+                    {STEP_NUMBERS_BY_ROUTE[i.route].map((n) => `·${n}`).join('')}
+                  </span>
+                )}
                 <span className="ml-auto shrink-0 font-mono text-2xs text-ink-600">{i.minutes}m</span>
               </Link>
             ))}

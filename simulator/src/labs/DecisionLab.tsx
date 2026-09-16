@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { decideArchitecture } from '../decision/engine'
 import type { RegionId, Requirements } from '../domain/types'
@@ -13,7 +13,6 @@ export default function DecisionLab() {
   const activeReq = useAppStore((s) => s.activeRequirements)
   const setWorkingArchitecture = useAppStore((s) => s.setWorkingArchitecture)
   const setActiveRequirements = useAppStore((s) => s.setActiveRequirements)
-  const markProgress = useAppStore((s) => s.markProgress)
   const navigate = useNavigate()
 
   const [req, setReq] = useState<Requirements>(
@@ -39,10 +38,6 @@ export default function DecisionLab() {
 
   const set = <K extends keyof Requirements>(k: K, v: Requirements[K]) => setReq((r) => ({ ...r, [k]: v }))
   const result = useMemo(() => decideArchitecture(req), [req])
-
-  useEffect(() => {
-    markProgress('used-decision-engine')
-  }, [markProgress])
 
   return (
     <div className="p-4">

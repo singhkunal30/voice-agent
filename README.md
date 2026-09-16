@@ -17,6 +17,26 @@ Two capabilities the agent handles:
 - `book_appointment(date, time, customer_name, contact)` — 30-min
   weekday slots, idempotent against retries.
 
+## Two things live in this repository
+
+| | What it is | Where |
+|---|---|---|
+| **Voice Agent** | A real, deployable streaming voice agent. Answers phone calls, transcribes, reasons, calls tools, speaks back. | `app/` |
+| **Architecture Simulator** | A flight simulator for voice/AI systems architecture. Run simulated calls, inject failures, scale to 10,000 concurrent, compare architectures, price them. No API keys, no external services. | `simulator/` |
+
+They are complementary: the simulator's `media-gateway` and `agent-runtime`
+components model the exact process `app/` implements, and its "Simple customer
+support agent" scenario is this codebase's brief. Build the simulator and the
+FastAPI app serves it at **`/lab`**.
+
+```bash
+cd simulator && npm install && npm run build
+cd .. && uvicorn app.main:app     # → http://localhost:8000/lab
+```
+
+See [`simulator/README.md`](simulator/README.md) for the full tour and
+[`simulator/ARCHITECTURE.md`](simulator/ARCHITECTURE.md) for how it is built.
+
 ## Architecture
 
 ```
@@ -219,8 +239,21 @@ OpenAI, or Supabase for real:
 - **Outbound endpoint** — auth, validation (E.164, no nested vars),
   override forwarding into the Twilio TwiML URL, 4xx pass-through,
   5xx → 502, idempotency replay, fresh-call audit insert.
+- **Simulator UI mount** — `/lab` serves the built simulator, returns a
+  helpful 503 when it is not built, and never shadows existing routes.
 
-44 tests, ~3 seconds.
+52 tests, ~3 seconds.
+
+### Simulator tests
+
+The simulator has its own suite (TypeScript, Vitest) covering the
+simulation engine, all the analytic models, the validator, the decision
+engine and twelve end-to-end scenarios:
+
+```bash
+cd simulator
+npm run verify    # typecheck + lint + 194 tests + production build
+```
 
 ## Local simulators
 
@@ -285,6 +318,21 @@ Tests run against the Protocols, so they keep working unchanged.
 docker build -t voice-agent .
 docker run -p 8000:8000 --env-file .env voice-agent
 ```
+
+Or the whole local stack — API, Postgres, Redis, and the simulator at
+`/lab`:
+
+```bash
+cd simulator && npm install && npm run build && cd ..
+docker compose up --build            # http://localhost:8000/lab
+
+docker compose --profile ui up       # + simulator dev server on :5173
+```
+
+Postgres and Redis are included because the simulator teaches the roles
+they play (durable record / ephemeral session state) and the agent can
+use them locally instead of Supabase. Neither is required by the
+simulator itself, which runs entirely in the browser.
 
 Behind a load balancer:
 

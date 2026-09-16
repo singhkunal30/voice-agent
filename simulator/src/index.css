@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-size: 15px;
+  }
+  body {
+    @apply bg-ink-950 text-ink-100;
+    font-feature-settings: 'cv02', 'cv03', 'cv04';
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: theme('colors.ink.900');
+  }
+  ::-webkit-scrollbar-thumb {
+    background: theme('colors.ink.700');
+    border-radius: 5px;
+    border: 2px solid theme('colors.ink.900');
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: theme('colors.ink.600');
+  }
+}
+
+@layer components {
+  .panel {
+    @apply rounded-lg border border-ink-750 bg-ink-900;
+  }
+  .panel-pad {
+    @apply rounded-lg border border-ink-750 bg-ink-900 p-4;
+  }
+  .btn {
+    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-800 px-3 py-1.5 text-sm text-ink-200 transition-colors hover:border-ink-600 hover:bg-ink-750 hover:text-ink-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40;
+  }
+  .btn-primary {
+    @apply border-accent-deep bg-accent-deep/40 text-accent hover:bg-accent-deep/60 hover:text-white hover:border-accent-dim;
+  }
+  .btn-sm {
+    @apply px-2 py-1 text-xs;
+  }
+  .input {
+    @apply w-full rounded-md border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-sm text-ink-100 placeholder-ink-500 focus:border-accent-dim focus:outline-none focus:ring-1 focus:ring-accent-dim;
+  }
+  .label {
+    @apply mb-1 block text-2xs font-medium uppercase tracking-wider text-ink-400;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs font-medium;
+  }
+}
+
+/* ---- React Flow theming --------------------------------------------- */
+.react-flow {
+  --xy-background-color: theme('colors.ink.950');
+}
+.react-flow__attribution {
+  background: transparent !important;
+  color: theme('colors.ink.600') !important;
+}
+.react-flow__controls {
+  box-shadow: none !important;
+}
+.react-flow__controls-button {
+  background: theme('colors.ink.800') !important;
+  border-bottom: 1px solid theme('colors.ink.700') !important;
+  color: theme('colors.ink.300') !important;
+  fill: theme('colors.ink.300') !important;
+}
+.react-flow__controls-button:hover {
+  background: theme('colors.ink.700') !important;
+}
+.react-flow__edge-path {
+  stroke-width: 1.5;
+}
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke: theme('colors.accent.DEFAULT') !important;
+  stroke-width: 2.5;
+}
+.react-flow__edge.edge-media .react-flow__edge-path {
+  stroke: theme('colors.media');
+}
+.react-flow__edge.edge-control .react-flow__edge-path {
+  stroke: theme('colors.control');
+  stroke-dasharray: 6 4;
+}
+.react-flow__edge.edge-active .react-flow__edge-path {
+  stroke: theme('colors.warn');
+  stroke-width: 3;
+  stroke-dasharray: 8 8;
+  animation: flow-dash 500ms linear infinite;
+}
+.react-flow__edge.edge-failed .react-flow__edge-path {
+  stroke: theme('colors.bad');
+  stroke-width: 2.5;
+  stroke-dasharray: 4 4;
+}
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
+  background: theme('colors.ink.500') !important;
+  border: 2px solid theme('colors.ink.900') !important;
+}
+.react-flow__handle:hover {
+  background: theme('colors.accent.DEFAULT') !important;
+}
+.react-flow__minimap {
+  background: theme('colors.ink.900') !important;
+}
+
+@keyframes flow-dash {
+  to {
+    stroke-dashoffset: -16;
+  }
+}
+
+/* subtle grid for panels behind charts */
+.chart-bg {
+  background-image: radial-gradient(circle, theme('colors.ink.800') 1px, transparent 1px);
+  background-size: 22px 22px;
+}

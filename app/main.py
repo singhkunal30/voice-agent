@@ -26,6 +26,7 @@ from .config import Settings, get_settings
 from .logging_setup import configure_logging
 from .outbound import router as outbound_router
 from .ratelimit import limiter
+from .simulator_ui import mount_simulator
 from .supabase_client import SupabaseClient
 from .tools import build_registry
 from .transport.twilio_inbound import router as twilio_router
@@ -76,6 +77,9 @@ async def lifespan(app: FastAPI):
             "inbound_enabled": bool(
                 settings.twilio_auth_token and settings.public_base_url
             ),
+            "simulator_ui": "/lab"
+            if getattr(app.state, "simulator_mounted", False)
+            else "not built",
         },
     )
     try:
@@ -124,6 +128,10 @@ def create_app() -> FastAPI:
 
     app.include_router(twilio_router)
     app.include_router(outbound_router)
+
+    # Architecture Simulator UI at /lab. No-op unless `simulator/dist` exists,
+    # so the voice agent runs unchanged whether or not the UI has been built.
+    app.state.simulator_mounted = mount_simulator(app)
 
     @app.get("/healthz")
     async def healthz():

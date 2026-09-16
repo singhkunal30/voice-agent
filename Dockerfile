@@ -1,3 +1,14 @@
+# ---- Stage 1: build the Architecture Simulator UI -------------------------
+# Produces simulator/dist, which the FastAPI app serves at /lab. Kept in its
+# own stage so none of the Node toolchain reaches the runtime image.
+FROM node:22-alpine AS ui
+WORKDIR /ui
+COPY simulator/package.json simulator/package-lock.json ./
+RUN npm ci
+COPY simulator/ ./
+RUN npm run build:only
+
+# ---- Stage 2: the voice agent runtime -------------------------------------
 FROM python:3.11-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -21,6 +32,10 @@ COPY app ./app
 COPY prompts ./prompts
 COPY scripts ./scripts
 COPY pyproject.toml .
+
+# The built simulator. Its absence would only disable /lab, but building it
+# here means `docker run` serves the learning lab out of the box.
+COPY --from=ui /ui/dist ./simulator/dist
 
 # Run as a non-root user.
 RUN useradd --create-home --uid 10001 voiceagent \

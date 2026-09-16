@@ -50,35 +50,53 @@ npm run smoke    # optional: browser smoke test over all 26 routes (needs `npx p
 
 ---
 
+## Finding your way around
+
+The sidebar groups the labs by the question they answer, and only the group you
+are in stays open. Two shortcuts matter more than the menu:
+
+- **⌘K** (or `/`) — search every lab and every glossary term. Plain words work:
+  try "slow", "cost", "phone", "opus".
+- **? How to use this** — on every lab. It opens by itself the first time you
+  visit and lists three things to try, in order. After that it stays shut.
+
+Prev/next links at the bottom of each lab walk the whole curriculum without the
+menu. The **Detail** switch in the header (Plain / Engineering) decides whether
+the advanced parameter panels start open. The ☾/☀ button toggles light and dark;
+both themes are driven by the same CSS variables in `src/theme.css`, including
+the hand-drawn SVG diagrams.
+
+---
+
 ## What's inside
 
 | Section | What you do there |
 |---|---|
-| **Dashboard** | Entry points, progress, the mental model |
-| **Learning Path** | 13 levels, from "what is a component" to "design under pressure" |
-| **Scenario Lab** | 12 realistic briefs; activating one threads its requirements through every other lab |
-| **Live Call Simulator** | Run a full call: signalling → audio frames → VAD → STT → LLM → tools → TTS → playback. Interrupt it. Break it. |
-| **Architecture Canvas** | Drag, connect, configure, validate, simulate, export (JSON/PNG/SVG) |
-| **Pattern Library** | 10 reference architectures, all editable |
-| **Audio Lab** | PCM, μ-law, Opus, sample rates, and detection of transcoding you didn't need |
-| **Latency Lab** | Closed-form waterfall; every input is a slider; streaming vs batch quantified |
-| **VAD & Turns** | Tune thresholds against scripted audio containing a cough and a mid-sentence thinking pause |
-| **STT / TTS Labs** | Simulated provider families; streaming vs batch; what noise and 8 kHz do to accuracy |
-| **Agent Runtime** | Context building, function calls, blocking vs async tools, failure recovery |
-| **State Machines** | Conversation / telephony / handoff machines — clickable, with timers and failure branches |
-| **Telephony Lab** | SIP ladder, RTP, DTMF, trunking — why signalling and media take different paths |
-| **WebSocket Lab** | Backpressure: watch an unbounded buffer convert a 3 s stall into permanent latency |
-| **WebRTC Lab** | SDP, ICE, STUN/TURN, and the browser-vs-phone architecture comparison |
-| **Human Handoff** | Availability check, queue, warm transfer, context transfer — and every failure branch |
-| **Infra & Scaling** | Sizing, long-lived connections, autoscaling with warmup lag, multi-region failover |
-| **Failure / Chaos** | Arm failures, watch blast radius on the canvas, toggle mitigations, compare |
-| **Reliability Lab** | Retry, backoff, jitter, circuit breaker, fallback — measured against one outage |
-| **Cost Simulator** | Per-call/day/month/year, editable pricing sheet, optimisation levers |
-| **Decision Lab** | Requirements in → architecture out, with every Requirement→Constraint→Decision→Tradeoff record |
-| **Compare Architectures** | Batch vs streaming vs speech-to-speech vs hybrid, on explicit axes |
-| **Challenge Mode** | Generated brief, your design, an honest evaluation (nothing revealed before you submit) |
+| **Home** | Three ways in, your progress, the full lab map |
+| **Guided course** | 13 steps in 5 stages, from "what is a component" to "design under pressure" |
+| **Scenarios** | 12 realistic briefs; activating one threads its requirements through every other lab |
+| **Live call** | Run a full call: signalling → audio frames → VAD → STT → LLM → tools → TTS → playback. Interrupt it. Break it. |
+| **Architecture canvas** | Drag, connect, configure, validate, simulate, export (JSON/PNG/SVG) |
+| **Reference patterns** | 10 reference architectures, all editable |
 | **Observability** | Simulated production console: spike → CPU → autoscale → queue → recovery |
-| **Knowledge Base** | 30 concept cards, each answering the same eight questions |
+| **Audio formats** | PCM, μ-law, Opus, sample rates, and detection of transcoding you didn't need |
+| **Latency** | Closed-form waterfall; every input is a slider; streaming vs batch quantified |
+| **Turn-taking** | Tune VAD against scripted audio containing a cough and a mid-sentence thinking pause |
+| **Speech to text / Text to speech** | Simulated provider families; streaming vs batch; what noise and 8 kHz do to accuracy |
+| **Agent runtime** | Context building, function calls, blocking vs async tools, failure recovery |
+| **Conversation state** | Conversation / telephony / handoff machines — clickable, with timers and failure branches |
+| **Telephony** | SIP ladder, RTP, DTMF, trunking — why signalling and media take different paths |
+| **WebSockets** | Backpressure: watch an unbounded buffer convert a 3 s stall into permanent latency |
+| **WebRTC** | SDP, ICE, STUN/TURN, and the browser-vs-phone architecture comparison |
+| **Human handoff** | Availability check, queue, warm transfer, context transfer — and every failure branch |
+| **Scaling** | Sizing, long-lived connections, autoscaling with warmup lag, multi-region failover |
+| **Break things** | Arm failures, watch blast radius on the canvas, toggle mitigations, compare |
+| **Reliability patterns** | Retry, backoff, jitter, circuit breaker, fallback — measured against one outage |
+| **Cost** | Per-call/day/month/year, editable pricing sheet, optimisation levers |
+| **Decision engine** | Requirements in → architecture out, with every Requirement→Constraint→Decision→Tradeoff record |
+| **Compare designs** | Batch vs streaming vs speech-to-speech vs hybrid, on explicit axes |
+| **Challenges** | Generated brief, your design, an honest evaluation (nothing revealed before you submit) |
+| **Glossary** | Concept cards, each answering the same eight questions |
 
 ---
 
@@ -113,8 +131,10 @@ simulator/
 │   ├── challenges/      Generator + evaluator
 │   ├── knowledge/       Concept cards
 │   ├── state/           Zustand store (localStorage persistence)
-│   ├── ui/              Shared components (canvas, timeline, waterfall, controls)
-│   └── labs/            One file per section
+│   ├── ui/              Shared components (canvas, timeline, waterfall, controls, ⌘K palette)
+│   ├── labs/            One file per section
+│   ├── nav.ts           Single source of truth for navigation, search and prev/next
+│   └── theme.css        Colour tokens for both themes (Tailwind and the SVGs read the same vars)
 └── scripts/smoke.mjs    Optional browser smoke test
 ```
 

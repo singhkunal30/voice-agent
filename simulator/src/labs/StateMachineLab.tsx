@@ -44,8 +44,13 @@ export default function StateMachineLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="State Machine Lab"
-        subtitle="The three machines that govern a voice call — conversation, telephony leg, and handoff. Click a state to inspect its timers, failure branches and cleanup; fire events to walk the machine like the runtime does."
+        title="Conversation state"
+        steps={[
+          "Fire transitions one at a time and watch the current state move.",
+          "Click a state to see what is allowed to happen from there — and what is not.",
+          "Read “Why explicit machines?” only after you have got a call stuck.",
+        ]}
+        subtitle="Call and turn lifecycles, one transition at a time."
         right={
           <Segmented value={machineId} onChange={switchMachine} ariaLabel="State machine"
             options={STATE_MACHINES.map((m) => ({ value: m.id, label: m.name.replace(' state machine', '').replace(' sequence', '') }))} />
@@ -59,10 +64,10 @@ export default function StateMachineLab() {
           <svg viewBox="0 0 680 430" className="w-full">
             <defs>
               <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#4a5a72" />
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgb(var(--ink-500))" />
               </marker>
               <marker id="arrow-active" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" />
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgb(var(--accent))" />
               </marker>
             </defs>
             {machine.transitions.map((t, i) => {
@@ -85,9 +90,9 @@ export default function StateMachineLab() {
               return (
                 <g key={i}>
                   <path d={`M${x1},${y1} Q${mx},${my} ${x2},${y2}`} fill="none"
-                    stroke={activeEdge ? '#38bdf8' : '#324054'} strokeWidth={activeEdge ? 1.8 : 1.1}
+                    stroke={activeEdge ? 'rgb(var(--accent))' : 'rgb(var(--ink-600))'} strokeWidth={activeEdge ? 1.8 : 1.1}
                     markerEnd={`url(#${activeEdge ? 'arrow-active' : 'arrow'})`} opacity={activeEdge ? 1 : 0.7} />
-                  <text x={mx} y={my - 3} textAnchor="middle" fontSize={8} fill={activeEdge ? '#7dd3fc' : '#4a5a72'}>
+                  <text x={mx} y={my - 3} textAnchor="middle" fontSize={8} fill={activeEdge ? 'rgb(var(--series-sky))' : 'rgb(var(--ink-500))'}>
                     {t.event.length > 24 ? t.event.slice(0, 23) + '…' : t.event}
                   </text>
                 </g>
@@ -100,14 +105,14 @@ export default function StateMachineLab() {
               return (
                 <g key={s.id} className="cursor-pointer" onClick={() => setSelected(s)}>
                   <rect x={p.x - 52} y={p.y - 18} width={104} height={36} rx={8}
-                    fill={isCurrent ? '#0369a1' : '#141c29'}
-                    stroke={isSelected ? '#38bdf8' : isCurrent ? '#38bdf8' : '#324054'}
+                    fill={isCurrent ? 'rgb(var(--accent-deep))' : 'rgb(var(--ink-800))'}
+                    stroke={isSelected ? 'rgb(var(--accent))' : isCurrent ? 'rgb(var(--accent))' : 'rgb(var(--ink-600))'}
                     strokeWidth={isSelected || isCurrent ? 2 : 1} />
                   <text x={p.x} y={p.y + 4} textAnchor="middle" fontSize={10.5} fontWeight={600}
-                    fill={isCurrent ? '#e0f2fe' : '#c3cddb'}>
+                    fill={isCurrent ? 'rgb(var(--ink-100))' : 'rgb(var(--ink-200))'}>
                     {s.name.length > 16 ? s.name.slice(0, 15) + '…' : s.name}
                   </text>
-                  {isCurrent && <circle cx={p.x - 44} cy={p.y - 10} r={3.5} fill="#34d399" />}
+                  {isCurrent && <circle cx={p.x - 44} cy={p.y - 10} r={3.5} fill="rgb(var(--good))" />}
                 </g>
               )
             })}

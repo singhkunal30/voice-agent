@@ -1,4 +1,5 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
 import { KNOWLEDGE_CARDS, KNOWLEDGE_CATEGORIES } from '../knowledge/cards'
 import type { KnowledgeCard } from '../domain/types'
 import { Badge, KV, PageHeader, Panel } from '../ui/primitives'
@@ -7,6 +8,19 @@ export default function KnowledgeBase() {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string>('all')
   const [selected, setSelected] = useState<KnowledgeCard | null>(null)
+  const { search } = useLocation()
+
+  // ⌘K can jump straight to a term: /knowledge?card=jitter-buffer
+  useEffect(() => {
+    const id = new URLSearchParams(search).get('card')
+    if (!id) return
+    const card = KNOWLEDGE_CARDS.find((c) => c.id === id)
+    if (card) {
+      setSelected(card)
+      setQuery('')
+      setCategory('all')
+    }
+  }, [search])
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim()
@@ -30,8 +44,13 @@ export default function KnowledgeBase() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Technology Knowledge Base"
-        subtitle="Every concept in the simulator, answering the same eight questions: what is it, why does it exist, what problem does it solve, where does it sit in a voice architecture, alternatives, limitations, scaling, failure modes."
+        title="Glossary"
+        steps={[
+          "Search for a term you just met in another lab.",
+          "Every card answers the same eight questions, so you can compare two technologies fairly.",
+          "You can reach any term from anywhere with ⌘K.",
+        ]}
+        subtitle="Every concept, answering the same eight questions, so two technologies can be compared fairly."
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2">

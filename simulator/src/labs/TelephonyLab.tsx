@@ -24,8 +24,13 @@ export default function TelephonyLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Telephony Lab"
-        subtitle="PSTN, SIP, RTP, trunking, DTMF — the hundred-year-old network your agent answers. The central lesson: SIP is signalling (setting calls up), RTP is media (the audio itself), and they travel on separate paths with separate failure modes."
+        title="Telephony"
+        steps={[
+          "Step through the SIP ladder one message at a time.",
+          "Notice that signalling and media take different paths — that split explains most telephony surprises.",
+          "Flip between inbound and outbound and compare who does the work.",
+        ]}
+        subtitle="Signalling and media take different paths. That split explains most telephony surprises."
         right={<Assumption>No real telecom connectivity — simulated signalling</Assumption>}
       />
 

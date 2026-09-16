@@ -5,12 +5,12 @@ import { Assumption, Badge, Callout, PageHeader, Panel, Stat, fmtMs } from '../u
 import { Segmented, Select, Slider, Toggle } from '../ui/controls'
 
 const OUTCOME_COLORS: Record<string, string> = {
-  ok: '#34d399',
-  'ok-retry': '#38bdf8',
-  'ok-fallback': '#fbbf24',
-  'shed-by-breaker-to-fallback': '#a78bfa',
-  failed: '#f87171',
-  'failed-fast': '#fb7185',
+  ok: 'rgb(var(--good))',
+  'ok-retry': 'rgb(var(--accent))',
+  'ok-fallback': 'rgb(var(--warn))',
+  'shed-by-breaker-to-fallback': 'rgb(var(--control))',
+  failed: 'rgb(var(--bad))',
+  'failed-fast': 'rgb(var(--series-rose))',
 }
 
 export default function ReliabilityLab() {
@@ -49,8 +49,13 @@ export default function ReliabilityLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Reliability Lab"
-        subtitle="One provider, one outage, 120 requests — and a set of strategies you can toggle. Retry, backoff, jitter, circuit breaker, fallback and timeout budgets are not vocabulary here: each one visibly changes what the callers experienced."
+        title="Reliability patterns"
+        steps={[
+          "Keep the failure fixed and switch strategy: Naive → Retries → Production.",
+          "Notice that retries alone can make the outage worse. That surprise is the point of this lab.",
+          "Read the request trace during the outage window to see individual callers, not averages.",
+        ]}
+        subtitle="The same outage, handled three ways. Retries alone can make it worse."
         right={<Assumption>Deterministic request stream</Assumption>}
       />
 
@@ -129,14 +134,14 @@ export default function ReliabilityLab() {
             <div className="h-64">
               <ResponsiveContainer>
                 <ScatterChart margin={{ top: 10, right: 16, bottom: 20, left: 4 }}>
-                  <CartesianGrid stroke="#1a2433" />
-                  <XAxis type="number" dataKey="x" name="time" unit="s" stroke="#4a5a72" fontSize={11}
-                    label={{ value: 'request time (s)', position: 'insideBottom', offset: -12, fill: '#4a5a72', fontSize: 10 }} />
-                  <YAxis type="number" dataKey="y" name="latency" unit="ms" stroke="#4a5a72" fontSize={11}
-                    label={{ value: 'caller wait (ms)', angle: -90, position: 'insideLeft', fill: '#4a5a72', fontSize: 10 }} />
+                  <CartesianGrid stroke="rgb(var(--ink-750))" />
+                  <XAxis type="number" dataKey="x" name="time" unit="s" stroke="rgb(var(--ink-500))" fontSize={11}
+                    label={{ value: 'request time (s)', position: 'insideBottom', offset: -12, fill: 'rgb(var(--ink-500))', fontSize: 10 }} />
+                  <YAxis type="number" dataKey="y" name="latency" unit="ms" stroke="rgb(var(--ink-500))" fontSize={11}
+                    label={{ value: 'caller wait (ms)', angle: -90, position: 'insideLeft', fill: 'rgb(var(--ink-500))', fontSize: 10 }} />
                   <ZAxis type="number" dataKey="z" range={[28, 28]} />
                   <Tooltip
-                    contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }}
+                    contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }}
                     formatter={(v: number, n: string) => (n === 'latency' ? [`${v} ms`, 'caller waited'] : [`${v}s`, 'at'])}
                   />
                   {Object.keys(OUTCOME_COLORS).map((oc) => (
@@ -160,7 +165,7 @@ export default function ReliabilityLab() {
           <Panel title="Same outage, three strategies" right={<Assumption />}>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wider text-ink-500">
+                <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wide text-ink-500">
                   <th className="py-1.5">Strategy</th>
                   <th className="text-right">Callers served</th>
                   <th className="text-right">p50</th>

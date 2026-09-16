@@ -91,8 +91,13 @@ export default function WebRtcLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="WebRTC Lab"
-        subtitle="SDP, ICE, STUN, TURN, SRTP, RTCP — the machinery that gets real-time audio out of a browser on an unknown network. And the architectural comparison that matters: browser → WebRTC → voice server vs phone → SIP/RTP → voice server."
+        title="WebRTC"
+        steps={[
+          "Press “↻ New connection attempt” and read the ICE candidates as they are gathered.",
+          "Pick a harsher network scenario and watch the connection fall back to a relay.",
+          "Read the browser-vs-phone comparison at the bottom — same pipeline, completely different edge.",
+        ]}
+        subtitle="Connection setup, NAT traversal, and what absorbs jitter and packet loss."
         right={<Assumption>Timings sampled from the seed</Assumption>}
       />
 

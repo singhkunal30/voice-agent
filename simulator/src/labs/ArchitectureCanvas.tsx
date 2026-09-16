@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toPng, toSvg } from 'html-to-image'
 import { ArchCanvas } from '../ui/ArchCanvas'
 import { ComponentInspector } from '../ui/ComponentInspector'
-import { Assumption, Badge, Callout, EmptyState, Panel } from '../ui/primitives'
+import { Assumption, Badge, Callout, EmptyState, LabGuide, Panel } from '../ui/primitives'
 import { NumberInput, Select } from '../ui/controls'
 import { useAppStore } from '../state/store'
 import { COMPONENT_SPECS, CATEGORY_LABELS, getSpec } from '../registry/components'
@@ -120,7 +120,7 @@ export default function ArchitectureCanvas() {
     const root = canvasRef.current
     if (!el || !root) return
     try {
-      const opts = { backgroundColor: '#080b12', width: root.clientWidth, height: root.clientHeight }
+      const opts = { backgroundColor: 'rgb(var(--ink-950))', width: root.clientWidth, height: root.clientHeight }
       const dataUrl = kind === 'png' ? await toPng(root, opts) : await toSvg(root, opts)
       const a = document.createElement('a')
       a.href = dataUrl
@@ -189,6 +189,15 @@ export default function ArchitectureCanvas() {
             ]}
           />
         )}
+        <LabGuide
+          title="Architecture canvas"
+          note="Drag components in, wire them up, and a set of engineering rules critiques what you drew."
+          steps={[
+            "Start from “Load pattern…” — critiquing something is far easier than inventing it.",
+            "Click any component to read what it does, how it scales, and how it fails.",
+            "Delete something load-bearing (try Redis) and watch the findings react.",
+          ]}
+        />
         <div className="mx-2 h-5 w-px bg-ink-700" />
         <button className="btn" onClick={exportJson} title="Export architecture + assumptions as JSON">⇩ JSON</button>
         <button className="btn" onClick={() => exportImage('png')}>⇩ PNG</button>

@@ -3,14 +3,14 @@ import type { LatencyBreakdown, LatencySegment } from '../domain/types'
 import { Assumption, Badge, fmtMs } from './primitives'
 
 const STAGE_COLORS: Record<LatencySegment['stage'], string> = {
-  network: '#64748b',
-  audio: '#22d3ee',
-  detect: '#fbbf24',
-  stt: '#38bdf8',
-  llm: '#a78bfa',
-  tool: '#f472b6',
-  tts: '#34d399',
-  playback: '#94a3b8',
+  network: 'rgb(var(--ink-500))',
+  audio: 'rgb(var(--media))',
+  detect: 'rgb(var(--warn))',
+  stt: 'rgb(var(--accent))',
+  llm: 'rgb(var(--control))',
+  tool: 'rgb(var(--series-pink))',
+  tts: 'rgb(var(--good))',
+  playback: 'rgb(var(--ink-300))',
 }
 
 /**

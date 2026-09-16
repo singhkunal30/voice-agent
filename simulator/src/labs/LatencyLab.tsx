@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { computeLatency, DEFAULT_LATENCY_PARAMS, streamingComparison, type LatencyParams } from '../models/latency'
 import { LatencyMilestones, LatencyWaterfall } from '../ui/LatencyWaterfall'
-import { Assumption, Callout, PageHeader, Panel, Stat, fmtMs } from '../ui/primitives'
+import { Assumption, Callout, Disclosure, PageHeader, Panel, Stat, fmtMs } from '../ui/primitives'
 import { Segmented, Slider, Toggle } from '../ui/controls'
 import { useAppStore } from '../state/store'
 
@@ -22,8 +22,13 @@ export default function LatencyLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Latency Lab"
-        subtitle="A closed-form model of the response pipeline. Move any slider and the entire waterfall recomputes — including the two facts that matter most: endpointing and STT run in parallel (the later gates the turn), and streaming stages overlap instead of adding."
+        title="Latency"
+        steps={[
+          "Press “All batch”, note the perceived latency, then press “All streaming”. That gap is the entire argument for streaming.",
+          "Find the longest bar in the waterfall. It is usually endpointing — product tuning, not engineering.",
+          "Open the parameter panels below and drag “Tool call on critical path” to 1.5 s to see what one CRM lookup costs you.",
+        ]}
+        subtitle="Endpointing and STT run in parallel, and streaming stages overlap instead of adding up. Everything else follows from those two facts."
         right={<Assumption>Every value is an editable assumption</Assumption>}
       />
 
@@ -52,7 +57,7 @@ export default function LatencyLab() {
             </div>
           </Panel>
 
-          <Panel title="Network">
+          <Disclosure summary="Network" hint="5 parameters" advanced>
             <div className="space-y-3">
               <Slider label="User ↔ edge (one way)" value={p.userToEdgeMs} onChange={(v) => set('userToEdgeMs', v)} min={5} max={300} step={5} unit="ms" help="Carrier/last-mile to your region. Region placement is the only fix." />
               <Slider label="Edge ↔ server" value={p.edgeToServerMs} onChange={(v) => set('edgeToServerMs', v)} min={1} max={100} step={1} unit="ms" />
@@ -60,9 +65,9 @@ export default function LatencyLab() {
               <Slider label="Audio frame size" value={p.frameMs} onChange={(v) => set('frameMs', v)} min={10} max={120} step={10} unit="ms" />
               <Slider label="Jitter buffer" value={p.jitterBufferMs} onChange={(v) => set('jitterBufferMs', v)} min={0} max={200} step={10} unit="ms" />
             </div>
-          </Panel>
+          </Disclosure>
 
-          <Panel title="Detection & STT">
+          <Disclosure summary="Detection & STT" hint="4 parameters" advanced>
             <div className="space-y-3">
               <Slider label="Endpointing silence timeout" value={p.endpointingMs} onChange={(v) => set('endpointingMs', v)} min={100} max={2000} step={50} unit="ms"
                 help="The deliberate wait after silence. Usually the single largest segment — and pure product tuning." />
@@ -71,9 +76,9 @@ export default function LatencyLab() {
                 help="Batch only: 0.2 means a 5 s utterance takes 1 s to process — after the user stops." />
               <Slider label="Utterance length" value={p.utteranceSeconds} onChange={(v) => set('utteranceSeconds', v)} min={1} max={20} step={0.5} unit="s" />
             </div>
-          </Panel>
+          </Disclosure>
 
-          <Panel title="LLM, tools & TTS">
+          <Disclosure summary="LLM, tools & TTS" hint="8 parameters" advanced defaultOpen={p.toolMs > 0}>
             <div className="space-y-3">
               <Slider label="LLM time-to-first-token" value={p.llmFirstTokenMs} onChange={(v) => set('llmFirstTokenMs', v)} min={80} max={2000} step={10} unit="ms" />
               <Slider label="LLM tokens / second" value={p.llmTokensPerSecond} onChange={(v) => set('llmTokensPerSecond', v)} min={10} max={300} step={5} />
@@ -85,7 +90,7 @@ export default function LatencyLab() {
               <Slider label="Reply audio length (batch TTS)" value={p.responseAudioSeconds} onChange={(v) => set('responseAudioSeconds', v)} min={1} max={30} step={1} unit="s" />
               <Slider label="Latency budget" value={p.budgetMs} onChange={(v) => set('budgetMs', v)} min={300} max={3000} step={50} unit="ms" />
             </div>
-          </Panel>
+          </Disclosure>
         </div>
 
         <div className="space-y-4">

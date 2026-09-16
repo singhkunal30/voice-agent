@@ -1,42 +1,61 @@
 /** @type {import('tailwindcss').Config} */
+
+// Every colour resolves through a CSS variable defined in src/theme.css, so
+// the same class names render correctly in both the dark and light themes.
+const token = (name) => `rgb(var(${name}) / <alpha-value>)`
+
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
+  darkMode: ['selector', '[data-theme="dark"]'],
   theme: {
     extend: {
       colors: {
-        // Slate-based engineering-tool palette. `panel` shades are the
-        // chrome; `accent` is the single interactive hue.
+        // `ink` is ordered by contrast against the page, not by lightness:
+        // 950 is always the page background, 100 always the strongest text.
         ink: {
-          950: '#080b12',
-          900: '#0b1018',
-          850: '#0f1520',
-          800: '#141c29',
-          750: '#1a2433',
-          700: '#222e40',
-          600: '#324054',
-          500: '#4a5a72',
-          400: '#6b7d96',
-          300: '#94a3b8',
-          200: '#c3cddb',
-          100: '#e6ecf4',
+          950: token('--ink-950'),
+          900: token('--ink-900'),
+          850: token('--ink-850'),
+          800: token('--ink-800'),
+          750: token('--ink-750'),
+          700: token('--ink-700'),
+          600: token('--ink-600'),
+          500: token('--ink-500'),
+          400: token('--ink-400'),
+          300: token('--ink-300'),
+          200: token('--ink-200'),
+          100: token('--ink-100'),
         },
         accent: {
-          DEFAULT: '#38bdf8',
-          dim: '#0ea5e9',
-          deep: '#0369a1',
+          DEFAULT: token('--accent'),
+          dim: token('--accent-dim'),
+          deep: token('--accent-deep'),
         },
-        media: '#22d3ee',
-        control: '#a78bfa',
-        good: '#34d399',
-        warn: '#fbbf24',
-        bad: '#f87171',
+        media: token('--media'),
+        control: token('--control'),
+        good: token('--good'),
+        warn: token('--warn'),
+        bad: token('--bad'),
+      },
+      boxShadow: {
+        panel: 'var(--shadow-panel)',
       },
       fontFamily: {
-        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
-        sans: ['Inter', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        // No webfont: the app is meant to run fully offline, and a half-loaded
+        // Inter (declared but never fetched) was the reason small text looked
+        // muddy. The native UI stack is well hinted at these sizes.
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Consolas', 'monospace'],
+        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'system-ui', 'Roboto', 'sans-serif'],
       },
       fontSize: {
-        '2xs': ['0.6875rem', { lineHeight: '1rem' }],
+        // Every step is one notch larger than before. Micro-labels at ~11px
+        // were the main readability complaint.
+        '2xs': ['0.75rem', { lineHeight: '1.05rem', letterSpacing: '0.01em' }],
+        xs: ['0.8125rem', { lineHeight: '1.15rem' }],
+        sm: ['0.9375rem', { lineHeight: '1.45rem' }],
+        base: ['1rem', { lineHeight: '1.6rem' }],
+        lg: ['1.125rem', { lineHeight: '1.65rem' }],
+        xl: ['1.3125rem', { lineHeight: '1.8rem' }],
       },
       keyframes: {
         'pulse-ring': {

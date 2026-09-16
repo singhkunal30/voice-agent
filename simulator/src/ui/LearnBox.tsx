@@ -39,7 +39,7 @@ export function LearnBox({ learn, compact = false }: { learn: LearningLevels; co
         ))}
       </div>
       <div className={`px-3 ${compact ? 'py-2' : 'py-2.5'}`}>
-        <div className="mb-1 text-2xs font-medium uppercase tracking-wider text-ink-500">{active.question}</div>
+        <div className="mb-1 text-2xs font-medium uppercase tracking-wide text-ink-500">{active.question}</div>
         <p className="text-sm leading-relaxed text-ink-200">{learn[level]}</p>
       </div>
     </div>

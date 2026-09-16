@@ -64,8 +64,13 @@ export default function AudioLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Audio Lab"
-        subtitle="Formats, sample rates, codecs and the conversions between them. Build a pipeline hop by hop and the lab computes every transformation's latency, CPU and quality cost — including detecting the transcoding you didn't need."
+        title="Audio formats"
+        steps={[
+          "Start on “Clean phone pipeline”. That is what a carrier actually hands you.",
+          "Switch to “Deliberately bad” and read the warnings — each one is a real mistake people ship.",
+          "Go back to the clean pipeline and change one stage's sample rate to see a conversion appear from nothing.",
+        ]}
+        subtitle="Build a pipeline hop by hop; every conversion's latency, CPU and quality cost is computed."
         right={<Assumption>Conversion costs are educational estimates</Assumption>}
       />
 
@@ -165,7 +170,7 @@ export default function AudioLab() {
           </div>
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wider text-ink-500">
+              <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wide text-ink-500">
                 <th className="py-1.5">Stage</th>
                 <th>Rate</th>
                 <th>Frames</th>

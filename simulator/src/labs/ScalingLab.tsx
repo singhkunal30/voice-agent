@@ -65,8 +65,13 @@ export default function ScalingLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Infrastructure & Scaling Lab"
-        subtitle="How the architecture changes as concurrency grows — and why. Sizing is arithmetic on labelled assumptions: concurrent calls ÷ capacity per instance ÷ headroom, with warmup lag and blast radius as first-class quantities."
+        title="Scaling"
+        steps={[
+          "Step the load presets: 10 → 100 → 1,000 → 10,000, and watch the bill of materials rewrite itself.",
+          "At each step, note which component count grows fastest. That is your bottleneck and your bill.",
+          "Then open “Autoscaling” and watch demand outrun the warmup gap.",
+        ]}
+        subtitle="Sizing is arithmetic on labelled assumptions: concurrent calls ÷ capacity per instance + headroom."
         right={
           <Segmented value={tab} onChange={setTab} ariaLabel="Scaling view"
             options={[
@@ -140,7 +145,7 @@ export default function ScalingLab() {
             <Panel title="Bill of materials" right={<Assumption>Educational sizing model</Assumption>}>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wider text-ink-500">
+                  <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wide text-ink-500">
                     <th className="py-1.5">Component</th>
                     <th className="text-right">Instances</th>
                     <th className="text-right">Capacity each</th>
@@ -305,16 +310,16 @@ function AutoscalingTab() {
           <div className="h-64 p-2">
             <ResponsiveContainer>
               <LineChart data={points}>
-                <CartesianGrid stroke="#1a2433" />
-                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="#4a5a72" fontSize={11} />
-                <YAxis yAxisId="l" stroke="#4a5a72" fontSize={11} />
-                <YAxis yAxisId="r" orientation="right" stroke="#4a5a72" fontSize={11} />
-                <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
+                <CartesianGrid stroke="rgb(var(--ink-750))" />
+                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis yAxisId="l" stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis yAxisId="r" orientation="right" stroke="rgb(var(--ink-500))" fontSize={11} />
+                <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line yAxisId="l" name="offered calls" dataKey="offeredCalls" stroke="#94a3b8" dot={false} isAnimationActive={false} />
-                <Line yAxisId="l" name="active calls" dataKey="activeCalls" stroke="#38bdf8" dot={false} isAnimationActive={false} />
-                <Line yAxisId="r" name="instances (serving)" dataKey="instances" stroke="#34d399" dot={false} strokeWidth={2} isAnimationActive={false} />
-                <Line yAxisId="r" name="instances (desired)" dataKey="desiredInstances" stroke="#34d399" strokeDasharray="4 4" dot={false} isAnimationActive={false} />
+                <Line yAxisId="l" name="offered calls" dataKey="offeredCalls" stroke="rgb(var(--ink-300))" dot={false} isAnimationActive={false} />
+                <Line yAxisId="l" name="active calls" dataKey="activeCalls" stroke="rgb(var(--accent))" dot={false} isAnimationActive={false} />
+                <Line yAxisId="r" name="instances (serving)" dataKey="instances" stroke="rgb(var(--good))" dot={false} strokeWidth={2} isAnimationActive={false} />
+                <Line yAxisId="r" name="instances (desired)" dataKey="desiredInstances" stroke="rgb(var(--good))" strokeDasharray="4 4" dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -323,13 +328,13 @@ function AutoscalingTab() {
           <div className="h-56 p-2">
             <ResponsiveContainer>
               <AreaChart data={points}>
-                <CartesianGrid stroke="#1a2433" />
-                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="#4a5a72" fontSize={11} />
-                <YAxis stroke="#4a5a72" fontSize={11} />
-                <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
+                <CartesianGrid stroke="rgb(var(--ink-750))" />
+                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis stroke="rgb(var(--ink-500))" fontSize={11} />
+                <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area name="p95 latency (ms)" dataKey="p95LatencyMs" stroke="#fbbf24" fill="#fbbf2422" isAnimationActive={false} />
-                <Area name="queue depth" dataKey="queueDepth" stroke="#f87171" fill="#f8717122" isAnimationActive={false} />
+                <Area name="p95 latency (ms)" dataKey="p95LatencyMs" stroke="rgb(var(--warn))" fill="rgb(var(--warn) / 0.13)" isAnimationActive={false} />
+                <Area name="queue depth" dataKey="queueDepth" stroke="rgb(var(--bad))" fill="none" isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -368,7 +373,7 @@ function RegionsTab({ concurrent }: { concurrent: number }) {
     t: p.t,
     ...Object.fromEntries(Object.entries(p.perRegion).map(([r, v]) => [`${r}-lat`, v.latencyMs])),
   }))
-  const colors: Record<string, string> = { 'in-mumbai': '#38bdf8', 'us-east': '#a78bfa', 'eu-west': '#34d399' }
+  const colors: Record<string, string> = { 'in-mumbai': 'rgb(var(--accent))', 'us-east': 'rgb(var(--control))', 'eu-west': 'rgb(var(--good))' }
 
   return (
     <div className="space-y-4">
@@ -403,10 +408,10 @@ function RegionsTab({ concurrent }: { concurrent: number }) {
         <div className="h-64 p-2">
           <ResponsiveContainer>
             <LineChart data={chartData}>
-              <CartesianGrid stroke="#1a2433" />
-              <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="#4a5a72" fontSize={11} />
-              <YAxis stroke="#4a5a72" fontSize={11} domain={[0, 'auto']} />
-              <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
+              <CartesianGrid stroke="rgb(var(--ink-750))" />
+              <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="rgb(var(--ink-500))" fontSize={11} />
+              <YAxis stroke="rgb(var(--ink-500))" fontSize={11} domain={[0, 'auto']} />
+              <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
               {regions.map((r) => (
                 <Line key={r} name={`${r} users`} dataKey={`${r}-lat`} stroke={colors[r]} dot={false} strokeWidth={2} isAnimationActive={false} />

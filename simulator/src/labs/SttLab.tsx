@@ -49,8 +49,13 @@ export default function SttLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="STT Lab"
-        subtitle="Simulated speech-to-text providers: streaming vs batch, managed vs self-hosted, and how noise, accents and 8 kHz phone audio degrade what the agent hears. Partials arrive while the user talks — that overlap is what streaming buys."
+        title="Speech to text"
+        steps={[
+          "Watch the partials revise themselves as they firm up — streaming hypotheses are unstable by design.",
+          "Switch the provider to a batch engine. The first partial disappears entirely, and the wait moves after the speech.",
+          "Raise the noise and accent sliders, then check which words break first: numbers and names, every time.",
+        ]}
+        subtitle="Streaming partials arrive while the user is still talking. That overlap is what streaming buys you."
         right={<Assumption>Provider profiles are example assumptions</Assumption>}
       />
 
@@ -136,7 +141,7 @@ export default function SttLab() {
           <Panel title="All providers on this exact audio" right={<Assumption />}>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wider text-ink-500">
+                <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wide text-ink-500">
                   <th className="py-1.5">Provider</th>
                   <th>Mode</th>
                   <th>First partial</th>

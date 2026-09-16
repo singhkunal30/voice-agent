@@ -1,0 +1,91 @@
+/**
+ * Colour tokens.
+ *
+ * Every colour in the app resolves through these variables — Tailwind reads
+ * them as `rgb(var(--ink-900) / <alpha-value>)`, and the hand-drawn SVG charts
+ * read them as `rgb(var(--ink-900))`. One definition, two consumers, so a
+ * theme swap reaches the diagrams as well as the chrome.
+ *
+ * The `ink` scale is ordered by *contrast against the page*, not by lightness:
+ * 950 is always the page background and 100 is always the strongest text. That
+ * inversion is what lets a light theme drop in without touching a single lab.
+ */
+
+:root {
+  /* ---- Dark (default) ------------------------------------------------ */
+  --ink-950: 16 20 24;
+  --ink-900: 23 28 34;
+  --ink-850: 29 35 42;
+  --ink-800: 37 44 53;
+  --ink-750: 47 55 66;
+  --ink-700: 61 70 82;
+  --ink-600: 85 96 110;
+  --ink-500: 137 150 165;
+  --ink-400: 164 176 190;
+  --ink-300: 194 203 214;
+  --ink-200: 221 227 234;
+  --ink-100: 244 247 250;
+
+  --accent: 110 168 254;
+  --accent-dim: 75 142 240;
+  --accent-deep: 28 50 82;
+
+  --good: 74 214 156;
+  --warn: 240 184 78;
+  --bad: 248 123 113;
+  --media: 64 210 196;
+  --control: 180 148 255;
+
+  /* Extra chart series — used where a lab needs more than five hues. */
+  --series-orange: 251 146 60;
+  --series-rose: 251 113 133;
+  --series-pink: 244 114 182;
+  --series-amber: 245 158 11;
+  --series-green: 74 222 128;
+  --series-yellow: 253 224 71;
+  --series-fuchsia: 232 121 249;
+  --series-indigo: 129 140 248;
+  --series-sky: 125 211 252;
+
+  --shadow-panel: 0 0 0 0 transparent;
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  --ink-950: 246 247 249;
+  --ink-900: 255 255 255;
+  --ink-850: 241 243 246;
+  --ink-800: 229 233 238;
+  --ink-750: 217 222 229;
+  --ink-700: 196 203 214;
+  --ink-600: 155 166 181;
+  --ink-500: 95 107 124;
+  --ink-400: 74 85 101;
+  --ink-300: 55 65 81;
+  --ink-200: 35 43 55;
+  --ink-100: 16 22 31;
+
+  --accent: 29 95 212;
+  --accent-dim: 21 75 172;
+  --accent-deep: 197 219 255;
+
+  --good: 12 138 87;
+  --warn: 166 104 8;
+  --bad: 202 60 48;
+  --media: 13 133 122;
+  --control: 101 56 198;
+
+  --series-orange: 226 103 12;
+  --series-rose: 225 29 72;
+  --series-pink: 219 39 119;
+  --series-amber: 217 119 6;
+  --series-green: 22 163 74;
+  --series-yellow: 202 138 4;
+  --series-fuchsia: 192 38 211;
+  --series-indigo: 79 70 229;
+  --series-sky: 2 132 199;
+
+  /* Light panels need a shadow to separate from the page; dark ones do not. */
+  --shadow-panel: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+  color-scheme: light;
+}

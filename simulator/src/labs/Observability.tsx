@@ -61,8 +61,13 @@ export default function Observability() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Observability Dashboard"
-        subtitle="A simulated production console. Every metric here maps to something a real deployment must emit — and the narrative strip below the charts names what is happening and why, so the graphs teach rather than just blink."
+        title="Observability"
+        steps={[
+          "Start on “Normal” and learn what healthy looks like — you cannot spot trouble without it.",
+          "Switch to “Traffic spike” and find which chart moves first. That one is your alert.",
+          "Try “AZ lost” and find the moment the system is genuinely in trouble.",
+        ]}
+        subtitle="The dashboards you would actually stare at during an incident."
         right={
           <div className="flex items-center gap-2">
             <Toggle label="Live" checked={live} onChange={setLive} />
@@ -111,15 +116,15 @@ export default function Observability() {
           <div className="h-56 p-2">
             <ResponsiveContainer>
               <LineChart data={visible}>
-                <CartesianGrid stroke="#1a2433" />
-                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="#4a5a72" fontSize={11} />
-                <YAxis yAxisId="l" stroke="#4a5a72" fontSize={11} />
-                <YAxis yAxisId="r" orientation="right" stroke="#4a5a72" fontSize={11} />
-                <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
+                <CartesianGrid stroke="rgb(var(--ink-750))" />
+                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis yAxisId="l" stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis yAxisId="r" orientation="right" stroke="rgb(var(--ink-500))" fontSize={11} />
+                <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line yAxisId="l" name="offered" dataKey="offeredCalls" stroke="#94a3b8" dot={false} isAnimationActive={false} />
-                <Line yAxisId="l" name="active" dataKey="activeCalls" stroke="#38bdf8" strokeWidth={2} dot={false} isAnimationActive={false} />
-                <Line yAxisId="r" name="instances" dataKey="instances" stroke="#34d399" strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Line yAxisId="l" name="offered" dataKey="offeredCalls" stroke="rgb(var(--ink-300))" dot={false} isAnimationActive={false} />
+                <Line yAxisId="l" name="active" dataKey="activeCalls" stroke="rgb(var(--accent))" strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Line yAxisId="r" name="instances" dataKey="instances" stroke="rgb(var(--good))" strokeWidth={2} dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -129,13 +134,13 @@ export default function Observability() {
           <div className="h-56 p-2">
             <ResponsiveContainer>
               <AreaChart data={visible}>
-                <CartesianGrid stroke="#1a2433" />
-                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="#4a5a72" fontSize={11} />
-                <YAxis stroke="#4a5a72" fontSize={11} tickFormatter={(v) => `${v}ms`} />
-                <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
+                <CartesianGrid stroke="rgb(var(--ink-750))" />
+                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis stroke="rgb(var(--ink-500))" fontSize={11} tickFormatter={(v) => `${v}ms`} />
+                <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area name="p95" dataKey="p95LatencyMs" stroke="#fbbf24" fill="#fbbf2422" isAnimationActive={false} />
-                <Area name="p50" dataKey="p50LatencyMs" stroke="#38bdf8" fill="#38bdf822" isAnimationActive={false} />
+                <Area name="p95" dataKey="p95LatencyMs" stroke="rgb(var(--warn))" fill="rgb(var(--warn) / 0.13)" isAnimationActive={false} />
+                <Area name="p50" dataKey="p50LatencyMs" stroke="rgb(var(--accent))" fill="none" isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -145,15 +150,15 @@ export default function Observability() {
           <div className="h-56 p-2">
             <ResponsiveContainer>
               <LineChart data={visible}>
-                <CartesianGrid stroke="#1a2433" />
-                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="#4a5a72" fontSize={11} />
-                <YAxis yAxisId="l" stroke="#4a5a72" fontSize={11} />
-                <YAxis yAxisId="r" orientation="right" stroke="#4a5a72" fontSize={11} />
-                <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
+                <CartesianGrid stroke="rgb(var(--ink-750))" />
+                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis yAxisId="l" stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis yAxisId="r" orientation="right" stroke="rgb(var(--ink-500))" fontSize={11} />
+                <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line yAxisId="l" name="CPU %" dataKey="cpuPct" stroke="#a78bfa" dot={false} isAnimationActive={false} />
-                <Line yAxisId="r" name="queue depth" dataKey="queueDepth" stroke="#f87171" dot={false} isAnimationActive={false} />
-                <Line yAxisId="r" name="error %" dataKey="errorRatePct" stroke="#fb923c" dot={false} isAnimationActive={false} />
+                <Line yAxisId="l" name="CPU %" dataKey="cpuPct" stroke="rgb(var(--control))" dot={false} isAnimationActive={false} />
+                <Line yAxisId="r" name="queue depth" dataKey="queueDepth" stroke="rgb(var(--bad))" dot={false} isAnimationActive={false} />
+                <Line yAxisId="r" name="error %" dataKey="errorRatePct" stroke="rgb(var(--series-orange))" dot={false} isAnimationActive={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -163,14 +168,14 @@ export default function Observability() {
           <div className="h-56 p-2">
             <ResponsiveContainer>
               <AreaChart data={visible}>
-                <CartesianGrid stroke="#1a2433" />
-                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="#4a5a72" fontSize={11} />
-                <YAxis yAxisId="l" stroke="#4a5a72" fontSize={11} />
-                <YAxis yAxisId="r" orientation="right" stroke="#4a5a72" fontSize={11} />
-                <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
+                <CartesianGrid stroke="rgb(var(--ink-750))" />
+                <XAxis dataKey="t" tickFormatter={(t) => `${t}s`} stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis yAxisId="l" stroke="rgb(var(--ink-500))" fontSize={11} />
+                <YAxis yAxisId="r" orientation="right" stroke="rgb(var(--ink-500))" fontSize={11} />
+                <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }} labelFormatter={(t) => `t = ${t}s`} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Area yAxisId="l" name="Mbit/s" dataKey="bandwidthMbps" stroke="#22d3ee" fill="#22d3ee22" isAnimationActive={false} />
-                <Area yAxisId="r" name="$/hour" dataKey="costPerHourUsd" stroke="#34d399" fill="#34d39922" isAnimationActive={false} />
+                <Area yAxisId="l" name="Mbit/s" dataKey="bandwidthMbps" stroke="rgb(var(--media))" fill="rgb(var(--media) / 0.13)" isAnimationActive={false} />
+                <Area yAxisId="r" name="$/hour" dataKey="costPerHourUsd" stroke="rgb(var(--good))" fill="none" isAnimationActive={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

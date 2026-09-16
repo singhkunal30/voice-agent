@@ -5,7 +5,7 @@ import { DEFAULT_LATENCY_PARAMS, type LatencyParams } from '../models/latency'
 import { Assumption, Badge, Callout, PageHeader, Panel, fmtMs } from '../ui/primitives'
 import { Slider } from '../ui/controls'
 
-const COLORS: Record<string, string> = { batch: '#f87171', streaming: '#34d399', s2s: '#a78bfa', hybrid: '#38bdf8' }
+const COLORS: Record<string, string> = { batch: 'rgb(var(--bad))', streaming: 'rgb(var(--good))', s2s: 'rgb(var(--control))', hybrid: 'rgb(var(--accent))' }
 
 export default function ComparisonLab() {
   const [params, setParams] = useState<LatencyParams>({ ...DEFAULT_LATENCY_PARAMS })
@@ -16,8 +16,13 @@ export default function ComparisonLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Architecture Comparison"
-        subtitle="Four ways to build the same voice agent. Latency numbers come from the shared analytic model with the assumptions shown below — change them and the table follows. Everything else is stated as engineering judgment, not a score to be summed."
+        title="Compare designs"
+        steps={[
+          "Pick two designs that are one step apart in scale.",
+          "Read down each axis rather than across — you are comparing tradeoffs, not scoring a winner.",
+          "Answer “Which would you pick?” for yourself before reading the note.",
+        ]}
+        subtitle="Two architectures on explicit axes, so you compare tradeoffs instead of picking a favourite."
         right={<Assumption>Numbers derive from the Latency Lab model</Assumption>}
       />
 
@@ -41,7 +46,7 @@ export default function ComparisonLab() {
             <table className="w-full min-w-[900px] text-sm">
               <thead>
                 <tr className="border-b border-ink-800 text-left align-bottom">
-                  <th className="w-36 py-2 text-2xs uppercase tracking-wider text-ink-500">Axis</th>
+                  <th className="w-36 py-2 text-2xs uppercase tracking-wide text-ink-500">Axis</th>
                   {data.columns.map((c) => (
                     <th key={c.id} className="px-2 py-2 text-xs font-semibold" style={{ color: COLORS[c.id] }}>
                       {c.name}
@@ -78,10 +83,10 @@ export default function ComparisonLab() {
             <div className="h-56 p-2">
               <ResponsiveContainer>
                 <BarChart data={chartData} layout="vertical" margin={{ left: 4, right: 30 }}>
-                  <CartesianGrid stroke="#1a2433" />
-                  <XAxis type="number" stroke="#4a5a72" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(1)}s`} />
-                  <YAxis type="category" dataKey="name" width={80} stroke="#4a5a72" fontSize={10} />
-                  <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }}
+                  <CartesianGrid stroke="rgb(var(--ink-750))" />
+                  <XAxis type="number" stroke="rgb(var(--ink-500))" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(1)}s`} />
+                  <YAxis type="category" dataKey="name" width={80} stroke="rgb(var(--ink-500))" fontSize={10} />
+                  <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }}
                     formatter={(v: number) => [fmtMs(v), 'perceived']} />
                   <Bar dataKey="ms" isAnimationActive={false}>
                     {chartData.map((d) => <Cell key={d.id} fill={COLORS[d.id]} />)}

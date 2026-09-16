@@ -67,8 +67,13 @@ export default function HandoffLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Human Handoff Lab"
-        subtitle="Handoff is a distributed transaction across three planes — routing (find a human), media (move the audio), context (move the conversation) — and each leg fails independently. The design is judged by its failure branches, not its happy path."
+        title="Human handoff"
+        steps={[
+          "Run “✓ Agent available” first: the happy path, so you know what success looks like.",
+          "Now run “✕ Nobody for a long time”. That branch is the design — the happy path is the easy part.",
+          "Watch the media-leg diagram change through before, during and after the transfer.",
+        ]}
+        subtitle="Transfers that succeed, transfers that queue, and transfers with nobody to transfer to."
         right={<Assumption>Queue waits and staffing are assumptions</Assumption>}
       />
 
@@ -178,7 +183,7 @@ export default function HandoffLab() {
 function LegCard({ title, legs, note }: { title: string; legs: [string, string, string][]; note: string }) {
   return (
     <div className="rounded-md border border-ink-750 bg-ink-900 p-3">
-      <div className="mb-2 text-2xs font-semibold uppercase tracking-wider text-ink-500">{title}</div>
+      <div className="mb-2 text-2xs font-semibold uppercase tracking-wide text-ink-500">{title}</div>
       <div className="space-y-1.5">
         {legs.map(([a, b, tone], i) => (
           <div key={i} className="flex items-center justify-center gap-1.5">

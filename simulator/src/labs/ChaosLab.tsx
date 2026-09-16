@@ -120,8 +120,13 @@ export default function ChaosLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Failure / Chaos Lab"
-        subtitle="Arm failures, run the call, and watch them propagate through the architecture on the canvas and through the event log. Then toggle the mitigations off and run the identical failure again — the difference between those two runs is what reliability engineering actually buys."
+        title="Break things"
+        steps={[
+          "Arm exactly one failure — “STT provider unavailable” — and run it.",
+          "Read what the caller experienced, not just the blast radius. The caller is the only honest metric.",
+          "Press “Arm everything” once, for the spectacle, then go fix it in Reliability patterns.",
+        ]}
+        subtitle="Inject a failure, watch it propagate, then read what the caller heard."
         right={<Assumption>Deterministic: same armed set → same run</Assumption>}
       />
 

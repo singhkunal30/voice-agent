@@ -14,8 +14,13 @@ export default function PatternLibrary() {
   return (
     <div className="flex h-full flex-col p-4">
       <PageHeader
-        title="Architecture Pattern Library"
-        subtitle="Ten reference designs, from the honest batch prototype to the multi-region enterprise platform. Every pattern is a full architecture: inspectable here, editable on the canvas, priceable in the cost simulator."
+        title="Reference patterns"
+        steps={[
+          "Read them in order — they are roughly ordered by the scale they survive.",
+          "For each step up, ask what forced the new component to exist. That is the whole lesson.",
+          "Load one onto the canvas when you want to take it apart.",
+        ]}
+        subtitle="Ten reference architectures, ordered by the scale they survive. Load any one onto the canvas."
         right={
           <button className="btn btn-primary" onClick={() => { loadPattern(pattern.id); navigate('/canvas') }}>
             ⬡ Open in canvas (editable)

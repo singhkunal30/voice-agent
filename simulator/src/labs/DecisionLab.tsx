@@ -47,8 +47,13 @@ export default function DecisionLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Architecture Decision Lab"
-        subtitle="Give it requirements; it gives you an architecture — but the architecture is the by-product. The deliverable is the reasoning: every component enters the design through an explicit Requirement → Constraint → Decision → Tradeoff record, with the rejected alternatives and why."
+        title="Decision engine"
+        steps={[
+          "Load a scenario's requirements, or set them yourself.",
+          "Read each decision's Requirement → Constraint → Decision → Tradeoff chain. Never accept a bare verdict.",
+          "Change one requirement — availability 99% → 99.99% — and watch how much of the design it rewrites.",
+        ]}
+        subtitle="Every choice is shown as Requirement → Constraint → Decision → Tradeoff, never as a bare verdict."
         right={
           <div className="flex gap-2">
             <Select value="__none" onChange={(v) => { const sc = SCENARIOS.find((s) => s.id === v); if (sc) setReq(sc.requirements) }}

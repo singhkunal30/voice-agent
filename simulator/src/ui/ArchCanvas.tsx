@@ -27,19 +27,19 @@ import type { Architecture, ArchEdge, ArchNode, ComponentCategory } from '../dom
 import { getSpec } from '../registry/components'
 
 export const CATEGORY_COLORS: Record<ComponentCategory, string> = {
-  endpoint: '#94a3b8',
-  telephony: '#f59e0b',
-  transport: '#22d3ee',
-  media: '#38bdf8',
-  speech: '#34d399',
-  intelligence: '#a78bfa',
-  runtime: '#e879f9',
-  state: '#fb7185',
-  data: '#fb923c',
-  infrastructure: '#818cf8',
-  observability: '#4ade80',
-  human: '#fde047',
-  external: '#9ca3af',
+  endpoint: 'rgb(var(--ink-300))',
+  telephony: 'rgb(var(--series-amber))',
+  transport: 'rgb(var(--media))',
+  media: 'rgb(var(--accent))',
+  speech: 'rgb(var(--good))',
+  intelligence: 'rgb(var(--control))',
+  runtime: 'rgb(var(--series-fuchsia))',
+  state: 'rgb(var(--series-rose))',
+  data: 'rgb(var(--series-orange))',
+  infrastructure: 'rgb(var(--series-indigo))',
+  observability: 'rgb(var(--series-green))',
+  human: 'rgb(var(--series-yellow))',
+  external: 'rgb(var(--ink-400))',
 }
 
 export interface CanvasHighlights {
@@ -187,8 +187,8 @@ export function ArchCanvas({
           label: e.label,
           animated: e.streaming && activeEdges.length === 0,
           className: cls,
-          labelStyle: { fill: '#94a3b8', fontSize: 10 },
-          labelBgStyle: { fill: '#0b1018', fillOpacity: 0.85 },
+          labelStyle: { fill: 'rgb(var(--ink-300))', fontSize: 10 },
+          labelBgStyle: { fill: 'rgb(var(--ink-900))', fillOpacity: 0.85 },
           style: { strokeWidth: 1.5 },
         }
       })
@@ -308,7 +308,7 @@ export function ArchCanvas({
       proOptions={{ hideAttribution: false }}
       colorMode="dark"
     >
-      <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="#1a2433" />
+      <Background variant={BackgroundVariant.Dots} gap={22} size={1} color="rgb(var(--ink-750))" />
       <Controls showInteractive={false} />
       <MiniMap
         pannable

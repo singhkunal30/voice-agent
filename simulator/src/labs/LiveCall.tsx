@@ -5,7 +5,7 @@ import { usePlayback } from '../ui/playback'
 import { SimControls } from '../ui/SimControls'
 import { EventTimeline } from '../ui/EventTimeline'
 import { LatencyMilestones, LatencyWaterfall } from '../ui/LatencyWaterfall'
-import { Assumption, Badge, Callout, PageHeader, Panel, fmtMs } from '../ui/primitives'
+import { Assumption, Badge, Disclosure, Callout, PageHeader, Panel, fmtMs } from '../ui/primitives'
 import { NumberInput, Select, Slider, Toggle } from '../ui/controls'
 import { useAppStore } from '../state/store'
 
@@ -140,8 +140,13 @@ export default function LiveCall() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Live Call Simulator"
-        subtitle="One complete voice-agent call as a deterministic discrete-event simulation: signalling, audio frames, VAD, streaming transcripts, LLM tokens, tool calls, streaming TTS, barge-in, handoff and failures. Same seed → identical run, every time."
+        title="Live call"
+        steps={[
+          "Press ▶ Start and just watch. Do not touch the settings on the first run.",
+          "Click any event in the timeline to see its payload and which component emitted it.",
+          "Turn on “User interrupts the agent (barge-in)”, run again, and watch the cancellation cascade.",
+        ]}
+        subtitle="One complete call as a deterministic event simulation. Same seed, same run, every time."
         right={<Assumption>All timings are simulation assumptions</Assumption>}
       />
 
@@ -167,7 +172,7 @@ export default function LiveCall() {
             </div>
           </Panel>
 
-          <Panel title="Pipeline">
+          <Disclosure summary="Pipeline" hint="providers & streaming" advanced>
             <div className="space-y-3">
               <Toggle label="Speech-to-speech mode (no STT/TTS hops)" checked={s2sMode} onChange={setS2sMode}
                 help="One realtime model consumes and produces audio directly." />
@@ -193,7 +198,7 @@ export default function LiveCall() {
                 min={300} max={8000} step={100} unit="tokens"
                 help="System prompt + history sent every turn — a latency and cost tax." />
             </div>
-          </Panel>
+          </Disclosure>
 
           <Panel title="Situations">
             <div className="space-y-2.5">
@@ -205,7 +210,7 @@ export default function LiveCall() {
             </div>
           </Panel>
 
-          <Panel title="Failure injection" right={<Badge tone={failures.length ? 'bad' : 'neutral'}>{failures.length} armed</Badge>}>
+          <Disclosure summary="Failure injection" hint={failures.length ? `${failures.length} armed` : 'break something'} advanced>
             <div className="space-y-2">
               {FAILURE_OPTIONS.map((f) => (
                 <Toggle key={f.target} label={f.label} checked={failures.includes(f.target)} onChange={() => toggleFailure(f.target)} />
@@ -215,7 +220,7 @@ export default function LiveCall() {
                   help="Turn OFF to watch the same failures kill the call outright." />
               </div>
             </div>
-          </Panel>
+          </Disclosure>
         </div>
 
         {/* Main column */}

@@ -143,8 +143,13 @@ export default function WebSocketLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="WebSocket Lab"
-        subtitle="One persistent connection carrying 50 binary audio frames per second upstream and JSON events downstream — for the whole call. This lab is about what happens when the other side reads slower than you write: backpressure, the defining failure mode of streaming transports."
+        title="WebSockets"
+        steps={[
+          "Turn on “Network stall at t=6 s” and watch frames pile up in the send buffer.",
+          "Now turn on the bounded buffer. You cannot keep every frame — decide which ones you drop.",
+          "Enable “Mid-call disconnect”, then toggle session resume and compare what the caller loses.",
+        ]}
+        subtitle="What happens to a continuous audio stream when the network stops cooperating."
         right={<Assumption>640 B / 20 ms frames = 16 kHz PCM16</Assumption>}
       />
 
@@ -201,21 +206,21 @@ export default function WebSocketLab() {
               <ResponsiveContainer>
                 {view === 'queue' ? (
                   <AreaChart data={ticks}>
-                    <CartesianGrid stroke="#1a2433" />
-                    <XAxis dataKey="t" tickFormatter={(t) => `${t / 1000}s`} stroke="#4a5a72" fontSize={11} />
-                    <YAxis stroke="#4a5a72" fontSize={11} label={{ value: 'frames queued', angle: -90, position: 'insideLeft', fill: '#4a5a72', fontSize: 10 }} />
-                    <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }}
+                    <CartesianGrid stroke="rgb(var(--ink-750))" />
+                    <XAxis dataKey="t" tickFormatter={(t) => `${t / 1000}s`} stroke="rgb(var(--ink-500))" fontSize={11} />
+                    <YAxis stroke="rgb(var(--ink-500))" fontSize={11} label={{ value: 'frames queued', angle: -90, position: 'insideLeft', fill: 'rgb(var(--ink-500))', fontSize: 10 }} />
+                    <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }}
                       formatter={(v: number, name) => (name === 'queueDepth' ? [`${v} frames (${v * 20} ms of audio)`, 'queued'] : [v, name])}
                       labelFormatter={(t) => `t = ${(t as number) / 1000}s`} />
-                    <Area type="monotone" dataKey="queueDepth" stroke="#fbbf24" fill="#fbbf2433" isAnimationActive={false} />
+                    <Area type="monotone" dataKey="queueDepth" stroke="rgb(var(--warn))" fill="rgb(var(--warn) / 0.2)" isAnimationActive={false} />
                   </AreaChart>
                 ) : (
                   <LineChart data={ticks}>
-                    <CartesianGrid stroke="#1a2433" />
-                    <XAxis dataKey="t" tickFormatter={(t) => `${t / 1000}s`} stroke="#4a5a72" fontSize={11} />
-                    <YAxis stroke="#4a5a72" fontSize={11} />
-                    <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }} labelFormatter={(t) => `t = ${(t as number) / 1000}s`} />
-                    <Line type="stepAfter" dataKey="bandwidthKbps" stroke="#38bdf8" dot={false} isAnimationActive={false} />
+                    <CartesianGrid stroke="rgb(var(--ink-750))" />
+                    <XAxis dataKey="t" tickFormatter={(t) => `${t / 1000}s`} stroke="rgb(var(--ink-500))" fontSize={11} />
+                    <YAxis stroke="rgb(var(--ink-500))" fontSize={11} />
+                    <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }} labelFormatter={(t) => `t = ${(t as number) / 1000}s`} />
+                    <Line type="stepAfter" dataKey="bandwidthKbps" stroke="rgb(var(--accent))" dot={false} isAnimationActive={false} />
                   </LineChart>
                 )}
               </ResponsiveContainer>

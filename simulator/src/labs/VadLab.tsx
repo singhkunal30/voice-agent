@@ -32,14 +32,13 @@ export default function VadLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="VAD & Turn Detection Lab"
-        subtitle={
-          <>
-            The scripted audio below contains a cough, six words, a <em>900 ms thinking pause mid-sentence</em>, four more words, then silence.
-            Your VAD settings decide what the agent believes happened. The core distinction: VAD answers <b>“is the user making sound?”</b> —
-            turn detection must answer <b>“has the user finished their thought?”</b>
-          </>
-        }
+        title="Turn-taking"
+        steps={[
+          "Press “300 ms timeout” — watch the agent cut the speaker off mid-thought.",
+          "Press “1100 ms timeout” — the pause survives, but every single reply now waits 1.1 s.",
+          "Try “Sensitive + noisy” to watch the VAD hear speech that was never there.",
+        ]}
+        subtitle="The scripted audio has a cough, ten words, and a 900 ms thinking pause mid-sentence. Your settings decide what the agent believes happened."
         right={<Assumption>Synthetic audio track</Assumption>}
       />
 
@@ -81,42 +80,42 @@ export default function VadLab() {
             <div className="overflow-x-auto p-3">
               <svg viewBox={`0 0 ${W} ${H + 58}`} className="min-w-[700px]" role="img" aria-label="VAD energy timeline">
                 {/* threshold line */}
-                <line x1={0} x2={W} y1={y(threshold)} y2={y(threshold)} stroke="#fbbf24" strokeDasharray="5 4" strokeWidth={1} />
-                <text x={4} y={y(threshold) - 4} fill="#fbbf24" fontSize={9}>threshold {threshold}</text>
+                <line x1={0} x2={W} y1={y(threshold)} y2={y(threshold)} stroke="rgb(var(--warn))" strokeDasharray="5 4" strokeWidth={1} />
+                <text x={4} y={y(threshold) - 4} fill="rgb(var(--warn))" fontSize={9}>threshold {threshold}</text>
                 {/* ground truth bands */}
                 {track.map((pt, i) =>
                   pt.truth !== 'silence' ? (
                     <rect key={i} x={x(pt.t)} y={H + 8} width={(30 / totalMs) * W + 0.5} height={8}
-                      fill={pt.truth === 'speech' ? '#34d399' : pt.truth === 'pause-within-thought' ? '#a78bfa' : '#f87171'} />
+                      fill={pt.truth === 'speech' ? 'rgb(var(--good))' : pt.truth === 'pause-within-thought' ? 'rgb(var(--control))' : 'rgb(var(--bad))'} />
                   ) : null,
                 )}
-                <text x={4} y={H + 30} fill="#6b7d96" fontSize={9}>ground truth:</text>
-                <text x={70} y={H + 30} fill="#34d399" fontSize={9}>■ speech</text>
-                <text x={125} y={H + 30} fill="#a78bfa" fontSize={9}>■ thinking pause (thought continues!)</text>
-                <text x={300} y={H + 30} fill="#f87171" fontSize={9}>■ cough</text>
+                <text x={4} y={H + 30} fill="rgb(var(--ink-400))" fontSize={9}>ground truth:</text>
+                <text x={70} y={H + 30} fill="rgb(var(--good))" fontSize={9}>■ speech</text>
+                <text x={125} y={H + 30} fill="rgb(var(--control))" fontSize={9}>■ thinking pause (thought continues!)</text>
+                <text x={300} y={H + 30} fill="rgb(var(--bad))" fontSize={9}>■ cough</text>
                 {/* detected segments */}
                 {outcome.segments.map((seg, i) => (
                   <rect key={i} x={x(seg.startMs)} y={H + 38} width={x(seg.endMs) - x(seg.startMs)} height={8}
-                    fill={seg.kind === 'detected-speech' ? '#38bdf8' : seg.kind === 'phantom' ? '#f87171' : '#fbbf24'} opacity={0.9}>
+                    fill={seg.kind === 'detected-speech' ? 'rgb(var(--accent))' : seg.kind === 'phantom' ? 'rgb(var(--bad))' : 'rgb(var(--warn))'} opacity={0.9}>
                     <title>{seg.kind}</title>
                   </rect>
                 ))}
-                <text x={4} y={H + 56} fill="#6b7d96" fontSize={9}>VAD verdict:</text>
-                <text x={62} y={H + 56} fill="#38bdf8" fontSize={9}>■ speech detected</text>
-                <text x={155} y={H + 56} fill="#f87171" fontSize={9}>■ phantom</text>
-                <text x={215} y={H + 56} fill="#fbbf24" fontSize={9}>■ missed/gated</text>
+                <text x={4} y={H + 56} fill="rgb(var(--ink-400))" fontSize={9}>VAD verdict:</text>
+                <text x={62} y={H + 56} fill="rgb(var(--accent))" fontSize={9}>■ speech detected</text>
+                <text x={155} y={H + 56} fill="rgb(var(--bad))" fontSize={9}>■ phantom</text>
+                <text x={215} y={H + 56} fill="rgb(var(--warn))" fontSize={9}>■ missed/gated</text>
                 {/* turn commit markers — an endpointer can commit several times */}
                 {outcome.turnCommits.map((c, i) => (
                   <g key={i}>
                     <line x1={x(c.atMs)} x2={x(c.atMs)} y1={0} y2={H + 46}
-                      stroke={c.midThought || c.empty ? '#f87171' : '#f472b6'} strokeWidth={1.5} />
-                    <text x={x(c.atMs) + 3} y={12 + (i % 2) * 11} fill={c.midThought || c.empty ? '#f87171' : '#f472b6'} fontSize={9}>
+                      stroke={c.midThought || c.empty ? 'rgb(var(--bad))' : 'rgb(var(--series-pink))'} strokeWidth={1.5} />
+                    <text x={x(c.atMs) + 3} y={12 + (i % 2) * 11} fill={c.midThought || c.empty ? 'rgb(var(--bad))' : 'rgb(var(--series-pink))'} fontSize={9}>
                       TURN_COMPLETE{c.midThought ? ' (mid-thought!)' : c.empty ? ' (empty!)' : ''}
                     </text>
                   </g>
                 ))}
                 {/* energy curve */}
-                <path d={pathD} fill="none" stroke="#94a3b8" strokeWidth={1.2} />
+                <path d={pathD} fill="none" stroke="rgb(var(--ink-300))" strokeWidth={1.2} />
               </svg>
             </div>
           </Panel>

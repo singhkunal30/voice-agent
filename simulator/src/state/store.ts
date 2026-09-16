@@ -9,6 +9,8 @@
 
 import { create } from 'zustand'
 import type { Architecture, Requirements, Scenario, ViewMode } from '../domain/types'
+
+export type Theme = 'dark' | 'light'
 import { cloneArchitecture } from '../domain/builder'
 import { PATTERNS } from '../patterns/library'
 import { SCENARIOS } from '../scenarios/library'
@@ -39,9 +41,17 @@ export interface SavedArchitecture {
   architecture: Architecture
 }
 
+/** Paints the theme onto <html> so the CSS variables in theme.css swap over. */
+export function applyTheme(theme: Theme): void {
+  document.documentElement.setAttribute('data-theme', theme)
+}
+
 interface AppState {
   viewMode: ViewMode
   setViewMode: (m: ViewMode) => void
+
+  theme: Theme
+  setTheme: (t: Theme) => void
 
   activeScenario: Scenario | null
   setActiveScenario: (s: Scenario | null) => void
@@ -67,11 +77,21 @@ interface AppState {
 
 const defaultArch = cloneArchitecture(PATTERNS[1].architecture, 'working')
 
+const initialTheme = load<Theme>('theme', 'dark')
+applyTheme(initialTheme)
+
 export const useAppStore = create<AppState>((set, get) => ({
   viewMode: load<ViewMode>('viewMode', 'simple'),
   setViewMode: (m) => {
     save('viewMode', m)
     set({ viewMode: m })
+  },
+
+  theme: initialTheme,
+  setTheme: (t) => {
+    save('theme', t)
+    applyTheme(t)
+    set({ theme: t })
   },
 
   activeScenario: load<string | null>('scenarioId', null)

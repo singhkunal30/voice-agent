@@ -87,8 +87,13 @@ export default function AgentLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="LLM / Agent Runtime Lab"
-        subtitle="The orchestration loop of one turn: state in, context built, model reasons, tools execute, state updates, model phrases the answer. Every tool you put on the blocking path spends the caller's silence."
+        title="Agent runtime"
+        steps={[
+          "Run a turn, then read “Function calls — what the LLM actually emitted”.",
+          "Use Failure injection to time out a tool, and watch what the agent says to the caller while it waits.",
+          "Grow the context size and watch first-token latency and cost per turn move together.",
+        ]}
+        subtitle="Where the thinking happens, what it costs, and what it does while a tool is slow."
         right={<Assumption>Tool latencies are editable assumptions</Assumption>}
       />
 

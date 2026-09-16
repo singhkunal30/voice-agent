@@ -15,8 +15,13 @@ export default function ScenarioLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Scenario Lab"
-        subtitle="Twelve realistic briefs. Activating a scenario threads its requirements through the whole app: the call simulator speaks its utterance, the canvas validates against its constraints, the decision engine designs for it."
+        title="Scenarios"
+        steps={[
+          "Skim the list on the left. They run from a weekend browser demo to a 10,000-call platform.",
+          "Open one and read “What makes this scenario interesting” — that paragraph is the actual design problem.",
+          "Press Activate scenario. Every other lab now works against these requirements.",
+        ]}
+        subtitle="Activating a scenario threads its requirements through every other lab."
       />
       <div className="grid gap-4 lg:grid-cols-[380px,1fr]">
         <div className="space-y-2">

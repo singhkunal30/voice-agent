@@ -1,14 +1,18 @@
+@import './theme.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   html {
-    font-size: 15px;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   body {
     @apply bg-ink-950 text-ink-100;
-    font-feature-settings: 'cv02', 'cv03', 'cv04';
+    text-rendering: optimizeLegibility;
   }
   ::-webkit-scrollbar {
     width: 10px;
@@ -25,20 +29,26 @@
   ::-webkit-scrollbar-thumb:hover {
     background: theme('colors.ink.600');
   }
+  /* Range inputs pick up the accent in both themes. */
+  input[type='range'] {
+    accent-color: theme('colors.accent.DEFAULT');
+  }
 }
 
 @layer components {
   .panel {
-    @apply rounded-lg border border-ink-750 bg-ink-900;
+    @apply rounded-lg border border-ink-750 bg-ink-900 shadow-panel;
   }
   .panel-pad {
-    @apply rounded-lg border border-ink-750 bg-ink-900 p-4;
+    @apply rounded-lg border border-ink-750 bg-ink-900 p-4 shadow-panel;
   }
   .btn {
-    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-800 px-3 py-1.5 text-sm text-ink-200 transition-colors hover:border-ink-600 hover:bg-ink-750 hover:text-ink-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40;
+    @apply inline-flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-850 px-3 py-1.5 text-sm text-ink-200 transition-colors hover:border-ink-600 hover:bg-ink-800 hover:text-ink-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:cursor-not-allowed disabled:opacity-40;
   }
+  /* Solid fill with page-coloured text: reads as the primary action and
+     inverts correctly between themes without a second rule. */
   .btn-primary {
-    @apply border-accent-deep bg-accent-deep/40 text-accent hover:bg-accent-deep/60 hover:text-white hover:border-accent-dim;
+    @apply border-transparent bg-accent text-ink-950 hover:border-transparent hover:bg-accent-dim hover:text-ink-950;
   }
   .btn-sm {
     @apply px-2 py-1 text-xs;
@@ -47,7 +57,7 @@
     @apply w-full rounded-md border border-ink-700 bg-ink-850 px-2.5 py-1.5 text-sm text-ink-100 placeholder-ink-500 focus:border-accent-dim focus:outline-none focus:ring-1 focus:ring-accent-dim;
   }
   .label {
-    @apply mb-1 block text-2xs font-medium uppercase tracking-wider text-ink-400;
+    @apply mb-1 block text-2xs font-medium text-ink-400;
   }
   .chip {
     @apply inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-2xs font-medium;

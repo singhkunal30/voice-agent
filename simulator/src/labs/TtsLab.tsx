@@ -35,8 +35,13 @@ export default function TtsLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="TTS Lab"
-        subtitle="Simulated text-to-speech providers. The number that matters is time-to-first-audio: a streaming engine starts talking while it is still generating; a batch engine makes the caller wait for the entire utterance to exist first."
+        title="Text to speech"
+        steps={[
+          "Note the time to first audio, then switch off “Streaming synthesis” and note it again.",
+          "Read the chunk timeline: generation runs ahead of playback, so only the first chunk is ever on the critical path.",
+          "Compare the providers — the best-sounding voice is rarely the fastest to start talking.",
+        ]}
+        subtitle="Only one number really matters here: time to first audio."
         right={<Assumption>Provider profiles are example assumptions</Assumption>}
       />
 
@@ -88,20 +93,20 @@ export default function TtsLab() {
           <Panel title="Chunk timeline — generation vs playback">
             <svg viewBox={`0 0 ${W} 120`} className="w-full" role="img" aria-label="TTS chunk timeline">
               {/* generation row */}
-              <text x={0} y={18} fill="#6b7d96" fontSize={10}>generated</text>
+              <text x={0} y={18} fill="rgb(var(--ink-400))" fontSize={10}>generated</text>
               {result.chunks.map((c) => (
                 <rect key={c.index} x={(c.atMs / totalMs) * W} y={26} width={Math.max(3, ((c.audioSeconds * 1000) / provider.realtimeFactor / totalMs) * W)} height={16}
-                  rx={2} fill="#34d399" opacity={0.85}>
+                  rx={2} fill="rgb(var(--good))" opacity={0.85}>
                   <title>chunk {c.index + 1}: ready at {fmtMs(c.atMs)} · {c.audioSeconds}s audio · {fmtBytes(c.bytes)}</title>
                 </rect>
               ))}
               {/* playback row: starts at firstAudioMs, plays at 1x */}
-              <text x={0} y={70} fill="#6b7d96" fontSize={10}>caller hears</text>
-              <rect x={(result.firstAudioMs / totalMs) * W} y={78} width={((result.audioSeconds * 1000) / totalMs) * W} height={16} rx={2} fill="#38bdf8" opacity={0.85}>
+              <text x={0} y={70} fill="rgb(var(--ink-400))" fontSize={10}>caller hears</text>
+              <rect x={(result.firstAudioMs / totalMs) * W} y={78} width={((result.audioSeconds * 1000) / totalMs) * W} height={16} rx={2} fill="rgb(var(--accent))" opacity={0.85}>
                 <title>playback: {result.audioSeconds}s at exactly 1× real time</title>
               </rect>
-              <line x1={(result.firstAudioMs / totalMs) * W} y1={20} x2={(result.firstAudioMs / totalMs) * W} y2={100} stroke="#fbbf24" strokeDasharray="4 3" />
-              <text x={(result.firstAudioMs / totalMs) * W + 4} y={112} fill="#fbbf24" fontSize={9}>first audio {fmtMs(result.firstAudioMs)}</text>
+              <line x1={(result.firstAudioMs / totalMs) * W} y1={20} x2={(result.firstAudioMs / totalMs) * W} y2={100} stroke="rgb(var(--warn))" strokeDasharray="4 3" />
+              <text x={(result.firstAudioMs / totalMs) * W + 4} y={112} fill="rgb(var(--warn))" fontSize={9}>first audio {fmtMs(result.firstAudioMs)}</text>
             </svg>
             <p className="mt-2 text-xs text-ink-500">
               {streaming && provider.streaming
@@ -113,7 +118,7 @@ export default function TtsLab() {
           <Panel title={'“Generate entire response → speak” vs “stream sentence by sentence”'} right={<Assumption />}>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wider text-ink-500">
+                <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wide text-ink-500">
                   <th className="py-1.5">Provider</th>
                   <th>Quality</th>
                   <th>First audio (streaming)</th>

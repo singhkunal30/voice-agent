@@ -45,8 +45,13 @@ export default function ChallengeLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Challenge Mode"
-        subtitle="A generated brief, your architecture, and an evaluation that explains itself. Nothing is revealed until you submit — the answers and the model architecture stay hidden while you think."
+        title="Challenges"
+        steps={[
+          "Read the brief, then press “Start designing →”.",
+          "Build it on the canvas before answering the design questions. Drawing it exposes what you have not decided.",
+          "Read the feedback on every question — especially the ones you got right.",
+        ]}
+        subtitle="A generated brief, your architecture, an honest evaluation. No grades."
         right={
           <div className="flex gap-2">
             <button className="btn" onClick={newChallenge}>🎲 New challenge</button>

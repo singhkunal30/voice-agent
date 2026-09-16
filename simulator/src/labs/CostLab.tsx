@@ -6,13 +6,13 @@ import { NumberInput, Slider, Toggle } from '../ui/controls'
 import { useAppStore } from '../state/store'
 
 const CATEGORY_COLORS: Record<string, string> = {
-  speech: '#34d399',
-  intelligence: '#a78bfa',
-  telephony: '#f59e0b',
-  compute: '#38bdf8',
-  data: '#fb7185',
-  storage: '#fb923c',
-  observability: '#4ade80',
+  speech: 'rgb(var(--good))',
+  intelligence: 'rgb(var(--control))',
+  telephony: 'rgb(var(--series-amber))',
+  compute: 'rgb(var(--accent))',
+  data: 'rgb(var(--series-rose))',
+  storage: 'rgb(var(--series-orange))',
+  observability: 'rgb(var(--series-green))',
 }
 
 export default function CostLab() {
@@ -57,8 +57,13 @@ export default function CostLab() {
   return (
     <div className="p-4">
       <PageHeader
-        title="Cost Simulator"
-        subtitle="Voice economics have three shapes: usage costs scale with call volume, capacity costs scale with PEAK concurrency, storage scales with volume × retention. Every price below is an editable example assumption — replace them with your own quotes and the model follows."
+        title="Cost"
+        steps={[
+          "Find the biggest slice in “Where the money goes”. It is rarely the one people worry about.",
+          "Apply the optimisation levers and check the annual delta, not the per-call one.",
+          "Watch cost per call fall as volume rises — that curve is why fixed infrastructure hurts small products.",
+        ]}
+        subtitle="Per-call unit economics, and the levers that actually move the annual number."
         right={<Assumption>Example pricing, not vendor quotes</Assumption>}
       />
 
@@ -113,7 +118,7 @@ export default function CostLab() {
             <div className="grid gap-4 lg:grid-cols-[1fr,280px]">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wider text-ink-500">
+                  <tr className="border-b border-ink-800 text-left text-2xs uppercase tracking-wide text-ink-500">
                     <th className="py-1.5">Line item</th>
                     <th className="text-right">$/call</th>
                     <th className="text-right">$/month</th>
@@ -145,7 +150,7 @@ export default function CostLab() {
                     <Pie data={pieData} dataKey="value" nameKey="name" innerRadius={40} outerRadius={78} paddingAngle={2}>
                       {pieData.map((d, i) => <Cell key={i} fill={CATEGORY_COLORS[d.category]} />)}
                     </Pie>
-                    <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }}
+                    <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }}
                       formatter={(v: number) => fmtUsd(v)} />
                   </PieChart>
                 </ResponsiveContainer>
@@ -157,14 +162,14 @@ export default function CostLab() {
             <div className="h-56">
               <ResponsiveContainer>
                 <LineChart data={volumeCurve}>
-                  <CartesianGrid stroke="#1a2433" />
+                  <CartesianGrid stroke="rgb(var(--ink-750))" />
                   <XAxis dataKey="callsPerDay" scale="log" domain={['auto', 'auto']} type="number"
-                    tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : String(v))} stroke="#4a5a72" fontSize={11} />
-                  <YAxis stroke="#4a5a72" fontSize={11} tickFormatter={(v) => `$${v.toFixed(2)}`} />
-                  <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }}
+                    tickFormatter={(v) => (v >= 1000 ? `${v / 1000}k` : String(v))} stroke="rgb(var(--ink-500))" fontSize={11} />
+                  <YAxis stroke="rgb(var(--ink-500))" fontSize={11} tickFormatter={(v) => `$${v.toFixed(2)}`} />
+                  <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }}
                     formatter={(v: number) => fmtUsd(v, 4)} labelFormatter={(v) => `${fmtNum(v as number)} calls/day`} />
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Line name="$/call" dataKey="usdPerCall" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
+                  <Line name="$/call" dataKey="usdPerCall" stroke="rgb(var(--accent))" strokeWidth={2} dot={{ r: 3 }} isAnimationActive={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -179,13 +184,13 @@ export default function CostLab() {
             <div className="h-48">
               <ResponsiveContainer>
                 <BarChart data={levers} layout="vertical" margin={{ left: 8, right: 16 }}>
-                  <CartesianGrid stroke="#1a2433" />
-                  <XAxis type="number" stroke="#4a5a72" fontSize={11} tickFormatter={(v) => `$${Math.round(v)}`} />
-                  <YAxis type="category" dataKey="label" width={230} stroke="#4a5a72" fontSize={10} />
-                  <Tooltip contentStyle={{ background: '#0f1520', border: '1px solid #324054', fontSize: 12 }}
+                  <CartesianGrid stroke="rgb(var(--ink-750))" />
+                  <XAxis type="number" stroke="rgb(var(--ink-500))" fontSize={11} tickFormatter={(v) => `$${Math.round(v)}`} />
+                  <YAxis type="category" dataKey="label" width={230} stroke="rgb(var(--ink-500))" fontSize={10} />
+                  <Tooltip contentStyle={{ background: 'rgb(var(--ink-850))', border: '1px solid rgb(var(--ink-600))', fontSize: 12 }}
                     formatter={(v: number) => [`${v < 0 ? '−' : '+'}${fmtUsd(Math.abs(v))}/month`, 'change']} />
                   <Bar dataKey="deltaPerMonth" isAnimationActive={false}>
-                    {levers.map((l, i) => <Cell key={i} fill={l.deltaPerMonth < 0 ? '#34d399' : '#f87171'} />)}
+                    {levers.map((l, i) => <Cell key={i} fill={l.deltaPerMonth < 0 ? 'rgb(var(--good))' : 'rgb(var(--bad))'} />)}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>

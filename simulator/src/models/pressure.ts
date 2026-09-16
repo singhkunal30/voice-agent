@@ -244,6 +244,48 @@ function verdictOf(findings: PressureFinding[]): PressureVerdict {
   return 'holds'
 }
 
+/**
+ * Latency parameters read off the architecture, not assumed.
+ *
+ * This matters more than it looks. Using the defaults here made every pressure
+ * test judge a streaming design by a batch design's numbers, so a perfectly
+ * good streaming architecture came back "already over its latency target". The
+ * streaming flags live on the edges — that is what `ArchEdge.streaming` is for
+ * — so read them.
+ */
+export function latencyParamsFor(arch: Architecture, req: Requirements) {
+  const nodeIds = (specId: string) => new Set(nodesOf(arch, specId))
+  /** Does any edge touching a node of this spec carry a stream? */
+  const streamsAt = (specId: string, fallback: boolean) => {
+    const ids = nodeIds(specId)
+    if (ids.size === 0) return fallback
+    const touching = arch.edges.filter((e) => ids.has(e.source) || ids.has(e.target))
+    if (touching.length === 0) return fallback
+    return touching.some((e) => e.streaming || e.type === 'streaming')
+  }
+
+  // A tool on the conversational path lands inside the silent gap. Anything
+  // reached asynchronously does not.
+  const toolIds = nodeIds('tool-api')
+  const toolOnTurnPath = arch.edges.some((e) => toolIds.has(e.target) && e.type === 'sync')
+
+  // The endpointing wait is usually the single largest stage, and it is a
+  // tunable on the VAD node rather than a property of the graph. Read it where
+  // the design states it; fall back to the model default where it does not.
+  const vadNode = arch.nodes.find((n) => n.specId === 'vad')
+  const endpointingMs = Number(vadNode?.config?.['silenceTimeoutMs'] ?? DEFAULT_LATENCY_PARAMS.endpointingMs)
+
+  return {
+    ...DEFAULT_LATENCY_PARAMS,
+    budgetMs: req.latencyTargetMs,
+    endpointingMs,
+    sttStreaming: streamsAt('stt', DEFAULT_LATENCY_PARAMS.sttStreaming),
+    llmStreaming: streamsAt('llm', DEFAULT_LATENCY_PARAMS.llmStreaming),
+    ttsStreaming: streamsAt('tts', DEFAULT_LATENCY_PARAMS.ttsStreaming),
+    toolMs: toolOnTurnPath ? 240 : 0,
+  }
+}
+
 /** Cost inputs derived from requirements, so the pressure tests and the Cost Lab agree. */
 export function costInputsFor(req: Requirements) {
   return {
@@ -460,10 +502,7 @@ function providerOutage(arch: Architecture, req: Requirements, test: PressureTes
 
 function latencyIncrease(arch: Architecture, req: Requirements, test: PressureTest): PressureResult {
   const added = 150
-  const base = {
-    ...DEFAULT_LATENCY_PARAMS,
-    budgetMs: req.latencyTargetMs,
-  }
+  const base = latencyParamsFor(arch, req)
   const before = computeLatency(base)
   const after = computeLatency({ ...base, serverToProviderMs: base.serverToProviderMs + added })
 
@@ -492,6 +531,20 @@ function latencyIncrease(arch: Architecture, req: Requirements, test: PressureTe
         'Cut hops or cut the endpointing wait. Co-locating the runtime with the providers removes the hop entirely; a speech-to-speech model removes two of them. Trimming the silence timeout is the cheapest lever and the one that costs you interruptions.',
       targets: [],
     })
+    if (!before.withinBudget) {
+      findings.push({
+        severity: 'holds',
+        title: 'What this verdict read from your design, and what it assumed',
+        detail: `Taken from the architecture: streaming on each stage (STT ${
+          base.sttStreaming ? 'streaming' : 'batch'
+        }, LLM ${base.llmStreaming ? 'streaming' : 'batch'}, TTS ${
+          base.ttsStreaming ? 'streaming' : 'batch'
+        }), whether a tool sits on the turn path, and the ${base.endpointingMs} ms silence timeout. Assumed, because the graph does not state them: provider first-token and first-audio times, the network hops, the jitter buffer and the utterance length.`,
+        remedy:
+          'If you disagree with the verdict, the Latency lab has every one of those assumptions as a slider. Change the ones you think are wrong and see whether the conclusion survives — that is what an assumption is for.',
+        targets: [],
+      })
+    }
   } else {
     findings.push({
       severity: 'holds',
@@ -967,7 +1020,7 @@ function regionalExpansion(arch: Architecture, req: Requirements, test: Pressure
 function dbSlowdown(arch: Architecture, req: Requirements, test: PressureTest): PressureResult {
   const beforeMs = 20
   const afterMs = 800
-  const base = { ...DEFAULT_LATENCY_PARAMS, budgetMs: req.latencyTargetMs, toolMs: beforeMs }
+  const base = { ...latencyParamsFor(arch, req), toolMs: beforeMs }
   const before = computeLatency(base)
   const after = computeLatency({ ...base, toolMs: afterMs })
 

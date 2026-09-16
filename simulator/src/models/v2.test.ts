@@ -9,6 +9,7 @@ import {
   summarisePressure,
   headroom,
   costInputsFor,
+  latencyParamsFor,
 } from './pressure'
 import {
   CODE_SWITCH_EXAMPLES,
@@ -242,6 +243,40 @@ describe('pressure testing', () => {
     const r = runPressureTest(b.build(), req({ latencyTargetMs: 800 }), 'db-slowdown')
     expect(r.verdict).toBe('breaks')
     expect(r.deltas.some((d) => d.label.includes('Perceived latency'))).toBe(true)
+  })
+
+  it('reads the streaming configuration off the architecture, not from defaults', () => {
+    // solidArch streams end to end; fragileArch is batch at every hop. Judging
+    // the streaming design by the batch design's numbers is exactly the bug
+    // this test exists to prevent.
+    const streaming = latencyParamsFor(solidArch(), req())
+    const batch = latencyParamsFor(fragileArch(), req())
+    expect(streaming.sttStreaming).toBe(true)
+    expect(streaming.ttsStreaming).toBe(true)
+    expect(batch.sttStreaming).toBe(false)
+    expect(batch.ttsStreaming).toBe(false)
+    expect(streaming.budgetMs).toBe(req().latencyTargetMs)
+  })
+
+  it('only puts a tool on the critical path when something calls it synchronously', () => {
+    const b = new ArchBuilder('async-tool', 'Async tool', 'tool off the turn path')
+    const rt = b.node('agent-runtime')
+    const tool = b.node('tool-api')
+    b.connect(rt, tool, { type: 'async', plane: 'control' })
+    expect(latencyParamsFor(b.build(), req()).toolMs).toBe(0)
+
+    const c = new ArchBuilder('sync-tool', 'Sync tool', 'tool on the turn path')
+    const rt2 = c.node('agent-runtime')
+    const tool2 = c.node('tool-api')
+    c.connect(rt2, tool2, { type: 'sync', plane: 'control' })
+    expect(latencyParamsFor(c.build(), req()).toolMs).toBeGreaterThan(0)
+  })
+
+  it('a streaming design survives added distance that a batch design does not', () => {
+    const streaming = runPressureTest(solidArch(), req({ latencyTargetMs: 1200 }), 'latency-increase')
+    const batch = runPressureTest(fragileArch(), req({ latencyTargetMs: 1200 }), 'latency-increase')
+    const ms = (r: typeof streaming) => Number(r.deltas[0].after.replace(/[^0-9]/g, ''))
+    expect(ms(streaming)).toBeLessThan(ms(batch))
   })
 
   it('summarises the whole suite worst-first', () => {

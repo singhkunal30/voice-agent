@@ -94,7 +94,13 @@ export default function Dashboard() {
           ) : (
             <div className="grid gap-3 md:grid-cols-3">
               {[
-                { who: 'New to this', title: 'Take the guided course', desc: '13 steps, in order, each landing you in the lab that teaches it.', to: '/learn', cta: 'Start' },
+                {
+                  who: 'New to this',
+                  title: 'Take the guided course',
+                  desc: `${COURSE_LENGTH} steps, in order, each landing you in the lab that teaches it.`,
+                  to: '/learn',
+                  cta: 'Start',
+                },
                 { who: 'Show me first', title: 'Watch a call happen', desc: 'Press play on a complete phone call, then interrupt the agent mid-sentence.', to: '/call', cta: 'Run a call' },
                 { who: 'Building one for real', title: 'Design from requirements', desc: 'Describe what you need, get an architecture back with every tradeoff shown.', to: '/decisions', cta: 'Open' },
               ].map((e, i) => (

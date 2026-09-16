@@ -1,348 +1,438 @@
-# Voice Agent
+# Voice Agent Lab
 
-A production-grade inbound + outbound voice agent built from
-self-hostable parts:
+A workspace for designing, simulating, breaking and redesigning voice-agent
+architectures.
 
-- **Twilio** — PSTN, phone numbers, audio transport (Media Streams over WSS).
-- **Pipecat** — real-time pipeline orchestration, VAD, turn-taking.
-- **Deepgram** — streaming speech-to-text.
-- **OpenAI GPT-4o-mini** — conversation + tool calling.
-- **ElevenLabs** — streaming text-to-speech.
-- **Supabase (optional)** — Postgres for orders, appointments, outbound audit.
-- **FastAPI** — webhook server, outbound REST, health/readiness.
+You do not read diagrams here. You draw a system, commit to what you think it
+will do, run it, find out you were wrong, and change it. Every number is
+produced by a deterministic simulation and labelled with where it came from.
 
-Two capabilities the agent handles:
+The workspace is organised around the five systems a voice agent is made of —
+**the voice loop, the agent, the network, production, architecture** — and the
+loop you work them in:
 
-- `lookup_order(order_id)` — status, ETA, items.
-- `book_appointment(date, time, customer_name, contact)` — 30-min
-  weekday slots, idempotent against retries.
+```
+Design → Predict → Simulate → Observe → Explain → Redesign
+```
 
-## Two things live in this repository
+Crossing that is a second axis: what you are *doing*. Building is not the same
+activity as breaking, and neither is diagnosing. The mode chips in the sidebar
+(Learn · Build · Simulate · Break · Diagnose · Challenge · Reference) filter the
+same labs rather than duplicating the menu.
 
-| | What it is | Where |
+**No API keys. No external services. No network calls.** The entire simulation
+runs in your browser.
+
+### The one idea
+
+Most learning tools show you an answer. This one hides it until you have
+committed to your own. A lab that can measure something asks for a band first —
+"where will perceived latency land?", "does this architecture hold under ten
+times the traffic?" — and then puts your answer next to the measured one with a
+*diagnosis* rather than a score:
+
+- **exact** — your model produced the right answer.
+- **one band out** — the shape of your model is right, a constant is wrong.
+- **several bands out** — something in the causal chain is not where you think.
+
+You can always skip the prediction. A skipped run is explicitly marked as
+producing information rather than evidence, and the course only counts the
+latter.
+
+---
+
+## Run it
+
+```bash
+npm install
+npm run dev          # http://localhost:5173
+```
+
+That is the whole setup. No keys, no accounts, no services.
+
+Production build — a static bundle you can serve from anywhere:
+
+```bash
+npm run build
+npm run preview      # http://localhost:4173
+```
+
+The router is hash-based, so `dist/` works from any static host with no
+server-side rewrite rules to configure.
+
+### Verify
+
+```bash
+npm run verify       # typecheck + lint + 358 unit/integration tests + production build
+npm test             # tests only
+npm run smoke        # browser: every route renders, 19 interactions work (needs a preview server)
+npm run coursecheck  # browser: the course thread holds and progress cannot be faked
+npm run authcheck    # browser: all three Supabase configurations behave as designed
+```
+
+---
+
+## Accounts and progress sync (optional)
+
+The workspace keeps everything in `localStorage` and always has. Signing in
+adds a **second** copy in Supabase so your record follows you to another
+machine — it does not move your work off your device, and every lab behaves
+identically signed out.
+
+With no environment configured, the sign-in control does not appear at all.
+That is the default, and it is the mode the browser test suites run in.
+
+**1. Create the table.** Run
+[`supabase/migrations/0001_learner_state.sql`](supabase/migrations/0001_learner_state.sql)
+in your project's SQL editor. It creates one private row per learner and turns
+on Row Level Security, which is the only thing standing between one learner and
+everyone else's rows — read the comments at the top of that file before
+changing it.
+
+**2. Enable email auth.** Supabase dashboard → Authentication → Providers →
+Email. Both email+password and emailed sign-in links are wired up.
+
+**3. Point the app at it.**
+
+```bash
+cp .env.example .env    # git-ignored
+# fill in VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY
+```
+
+> **The anon key, never the service-role key.** Every `VITE_*` variable is
+> compiled into the JavaScript bundle and is readable by anyone who loads the
+> page. The anon key is designed for that and carries no authority of its own.
+> The service-role key bypasses RLS entirely; publishing one gives every
+> visitor full access to your database. The app decodes the key at boot, and
+> refuses to start the client if it finds a service-role claim — but the real
+> protection is not putting it there.
+
+### What syncs, and how conflicts are settled
+
+Two copies that can both change need a merge rule, and "newest whole blob wins"
+is the wrong one — it silently discards work done on the other device. So the
+rule is chosen per field, from what the field actually is:
+
+| | Rule | Why |
 |---|---|---|
-| **Voice Agent** | A real, deployable streaming voice agent. Answers phone calls, transcribes, reasons, calls tools, speaks back. | `app/` |
-| **Voice Agent Lab** | A workspace for voice-agent architecture: draw a system, predict what it will do, run it, break it, and redesign. Pressure tests, agent-quality simulation, a deterministic evaluation suite. No API keys, no external services. | `simulator/` |
+| Course progress | **Union** | A flag is written when you do something and never removed except by an explicit reset. Union is conflict-free: signing in on a new laptop can only add to what you had. |
+| Prediction record | Append, dedupe on (question, timestamp), keep 200 | It is a log. |
+| Working prompt | Newer whole wins | Merging it section by section would produce a prompt neither device chose. |
+| Saved designs | Union by id, newer `savedAt` per id, keep 20 | Same cap the local store uses. |
+| Theme, density, mode | **Does not sync** | A dark-theme laptop and a light-theme desktop is a preference, not a disagreement. |
 
-They are complementary: the simulator's `media-gateway` and `agent-runtime`
-components model the exact process `app/` implements, and its "Simple customer
-support agent" scenario is this codebase's brief. Build the simulator and the
-FastAPI app serves it at **`/lab`**.
+The merge is pure and lives in [`src/state/sync.ts`](src/state/sync.ts), which
+is why it has 26 tests and no network in sight. Losing connectivity never costs
+you anything: the local copy is written first and is always authoritative.
 
-```bash
-cd simulator && npm install && npm run build
-cd .. && uvicorn app.main:app     # → http://localhost:8000/lab
-```
+`npm run authcheck` builds three real production bundles — no key, an anon key,
+a service-role key — and checks each one in a browser: that sign-in is absent,
+present, and refused-with-an-explanation respectively. The keys it uses are
+synthetic and authenticate nothing.
 
-See [`simulator/README.md`](simulator/README.md) for the full tour and
-[`simulator/ARCHITECTURE.md`](simulator/ARCHITECTURE.md) for how it is built.
+---
 
-## Architecture
+## Finding your way around
 
-```
-caller ──► Twilio (PSTN) ──► POST /twilio/voice ──► TwiML <Connect><Stream/>
-                                                        │
-                                                        ▼
-                                              WSS /twilio/media
-                                                        │
-                                                        ▼
-                              Pipecat: VAD → Deepgram → GPT-4o-mini → ElevenLabs
-                                                        │
-                                                        ├─► lookup_order  ──► OrderBackend
-                                                        └─► book_appointment ──► CalendarBackend
+The sidebar groups the labs into the five systems, filtered by whichever mode
+you have selected, and only the group you are in stays open. Two shortcuts
+matter more than the menu:
 
-internal caller ──► POST /outbound/call ──► Twilio REST /Calls ──► (callee picks up) ──► same flow
-```
+- **⌘K** (or `/`) — search every lab and every glossary term. Plain words work:
+  try "slow", "cost", "phone", "opus".
+- **? How to use this** — on every lab. It opens by itself the first time you
+  visit and lists three things to try, in order. After that it stays shut.
 
-| Concern | Where it lives |
+Prev/next links at the bottom of each lab walk the whole curriculum without the
+menu. The **Detail** switch in the header (Plain / Engineering) decides whether
+the advanced parameter panels start open. The ☾/☀ button toggles light and dark;
+both themes are driven by the same CSS variables in `src/theme.css`, including
+the hand-drawn SVG diagrams.
+
+---
+
+## What's inside
+
+| Section | What you do there |
 |---|---|
-| Config (env-driven, pydantic-settings) | `app/config.py` |
-| Inbound Twilio webhook + Media Stream WS | `app/transport/twilio_inbound.py` |
-| Twilio signature verification | `app/transport/twilio_signature.py` |
-| Outbound Twilio REST client | `app/transport/twilio_outbound.py` |
-| Outbound endpoint (auth, idempotency, audit) | `app/outbound.py`, `app/schemas/outbound.py` |
-| Pipecat pipeline factory | `app/agent/pipeline.py` |
-| System prompt loader | `app/agent/prompts.py`, `prompts/system_prompt_v1.md` |
-| Pipecat ⇄ ToolRegistry adapter | `app/agent/tools_bridge.py` |
-| Tool dispatch + backend Protocols | `app/tools/registry.py`, `app/tools/backends.py` |
-| Tool handlers (the spoken behavior) | `app/tools/handlers.py` |
-| Supabase backends + PostgREST client | `app/supabase_client.py`, `app/tools/backends_supabase.py` |
-| SQL schema | `migrations/` |
-| Structured JSON logging w/ call-id | `app/logging_setup.py` |
-| Tests | `tests/` |
-| Local simulators | `scripts/` |
+| **Workspace** | Where you left off, how your current design does under pressure, what you have predicted, the full lab map |
+| **Guided course** | 15 steps in 6 stages. Eight of them need evidence rather than activity. The step follows you into each lab, so you never lose your place |
+| **Scenarios** | 12 realistic briefs; activating one threads its requirements through every other lab |
+| **Live call** | Run a full call: signalling → audio frames → VAD → STT → LLM → tools → TTS → playback. Interrupt it. Break it. |
+| **Architecture canvas** | Drag, connect, configure, validate, simulate, export (JSON/PNG/SVG) |
+| **Reference patterns** | 10 reference architectures, all editable |
+| **Observability** | Simulated production console: spike → CPU → autoscale → queue → recovery |
+| **Audio formats** | PCM, μ-law, Opus, sample rates, and detection of transcoding you didn't need |
+| **Latency** | Closed-form waterfall; every input is a slider; streaming vs batch quantified |
+| **Turn-taking** | Tune VAD against scripted audio containing a cough and a mid-sentence thinking pause |
+| **Speech to text / Text to speech** | Simulated provider families; streaming vs batch; what noise and 8 kHz do to accuracy; and Hinglish code-switching as the honest hard case |
+| **Agent runtime** | Context building, function calls, blocking vs async tools, failure recovery |
+| **Conversation state** | Conversation / telephony / handoff machines — clickable, with timers and failure branches |
+| **Telephony** | SIP ladder, RTP, DTMF, trunking — why signalling and media take different paths |
+| **WebSockets** | Backpressure: watch an unbounded buffer convert a 3 s stall into permanent latency |
+| **WebRTC** | SDP, ICE, STUN/TURN, and the browser-vs-phone architecture comparison |
+| **Human handoff** | Availability check, queue, warm transfer, context transfer — and every failure branch |
+| **Scaling** | Sizing, long-lived connections, autoscaling with warmup lag, multi-region failover |
+| **Break things** | Arm failures, predict what the caller experiences, watch blast radius on the canvas, toggle mitigations, compare |
+| **Pressure tests** | Ten changes the world makes to a design — 10× traffic, a vendor outage, +150 ms per hop, a 40% budget cut, a second language, four nines, tripled escalations, a second region, a 40× slower database, a queue backlog. Plus a data-exposure tab: every copy of caller data the pipeline creates |
+| **Prompts** | A voice prompt as an engineering artefact: section by section, with the per-turn token cost and the failure each instruction prevents |
+| **Agent quality** | Twelve realistic turns and the six ways they go wrong — misunderstood, wrong tool, wrong arguments, hallucination, lost state, missed and over escalation |
+| **Evaluation** | PASS / PARTIAL / FAIL, a release gate on state-changing cases, regression comparison between two configurations, and a seed sweep |
+| **Reliability patterns** | Retry, backoff, jitter, circuit breaker, fallback — measured against one outage |
+| **Cost** | Per-call/day/month/year, editable pricing sheet, optimisation levers |
+| **Decision engine** | Requirements in → architecture out, with every Requirement→Constraint→Decision→Tradeoff record |
+| **Compare designs** | Batch vs streaming vs speech-to-speech vs hybrid, on explicit axes |
+| **Challenges** | Generated brief *with a cost ceiling*, your design, an honest evaluation (nothing revealed before you submit) |
+| **Glossary** | Concept cards, each answering the same eight questions |
 
-## Quickstart (local)
+---
 
-```bash
-git clone <this repo>
-cd voice-agent
-python3.11 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env  # then fill in secrets
+## Project structure
 
-# Run the server
-.venv/bin/uvicorn app.main:app --reload
+```
+├── src/
+│   ├── domain/          Types, architecture builder DSL, learning progression
+│   │   ├── types.ts     THE domain model — every lab reads these types
+│   │   ├── builder.ts   Programmatic architecture construction
+│   │   ├── learning.ts  The guided course — the spine every surface reads
+│   │   ├── prediction.ts Questions, bands and diagnoses for the predict loop
+│   │   └── numbers.ts   ASSUMPTION / REFERENCE / MEASURED provenance
+│   ├── engine/          The deterministic simulation kernel
+│   │   ├── rng.ts       Seeded PRNG (SplitMix32) — no Math.random anywhere
+│   │   ├── queue.ts     Binary min-heap, (time, seq) total ordering
+│   │   ├── simulation.ts Virtual clock + event loop
+│   │   └── callSim.ts   A complete voice call as a discrete-event simulation
+│   ├── models/          Analytic models
+│   │   ├── audio.ts     Formats, conversions, pipeline analysis
+│   │   ├── latency.ts   Closed-form latency with overlap semantics
+│   │   ├── scaling.ts   Resources, bottlenecks, sizing, traffic, regions
+│   │   ├── cost.ts      Cost engine + optimisation levers
+│   │   ├── reliability.ts Retry/backoff/breaker/fallback simulation
+│   │   ├── vad.ts       VAD + turn detection over a scripted track
+│   │   ├── stateMachines.ts Conversation / telephony / handoff machines
+│   │   ├── pressure.ts  Ten named changes applied to a design, re-using the models above
+│   │   ├── prompt.ts    Voice prompt sections → behaviour factors + token cost
+│   │   ├── agentQuality.ts The six ways a turn goes wrong, seeded and explainable
+│   │   ├── evaluation.ts PASS/PARTIAL/FAIL, release gate, regressions, seed sweep
+│   │   ├── whatIf.ts    Remove a component and report what it was for
+│   │   ├── language.ts  Accent, telephony and code-switching effects on recognition
+│   │   └── compliance.ts Every copy of caller data a voice pipeline creates
+│   ├── providers/       STT/TTS/LLM/Telephony interfaces + simulated impls
+│   ├── registry/        Component catalog (the single source of component truth)
+│   ├── validation/      Architecture rules
+│   ├── decision/        Decision engine + architecture comparison
+│   ├── scenarios/       12 scenario briefs
+│   ├── patterns/        10 reference architectures
+│   ├── challenges/      Generator + evaluator
+│   ├── knowledge/       Concept cards
+│   ├── lib/supabase.ts  Optional Supabase client; refuses a service-role key
+│   ├── state/           Zustand store (localStorage first), auth, and the sync merge
+│   ├── ui/              Shared components (canvas, timeline, waterfall, controls, ⌘K palette)
+│   │   └── Prediction.tsx The gate that hides results until you commit to an answer
+│   ├── labs/            One file per section
+│   ├── nav.ts           Five systems × seven modes — navigation, search, prev/next
+│   └── theme.css        Colour, space and density tokens (Tailwind and the SVGs read the same vars)
+├── scripts/smoke.mjs    Browser smoke test: every route, every key interaction
+├── scripts/coursecheck.mjs Walks the course and fails if progress can be faked
+└── supabase/migrations/ The learner_state table and its RLS policies
 ```
 
-For real phone calls you need a public HTTPS URL. The simplest path:
+---
 
-```bash
-ngrok http 8000
-# -> https://abcd.ngrok.app  -- set this as PUBLIC_BASE_URL in .env
+## The guided course
+
+Twenty-nine labs is a menu, not a curriculum. `src/domain/learning.ts` turns
+them into an ordered path — six stages, fifteen steps — and every surface reads
+from it: the course page, the sidebar step numbers, the workspace's "continue",
+the prev/next footer, and the **course rail**.
+
+The rail is the important part. The course used to stop at the door of every
+lab: you would pick step 4, land in the VAD lab, and lose all sense of where you
+were, what counted as finished, or where to go next. The rail follows you in and
+carries the step's number, its goal, what "done" means here, and the button that
+continues the path. Labs that are *not* course steps say so, so reference
+material does not read like a step you forgot.
+
+Three rules keep it honest, and the third is the one that matters:
+
+1. **Visiting a page never completes anything.** Progress you did not earn is
+   worse than no progress bar — and this was a real bug in V1: five steps ticked
+   on arrival, and the scaling lab completed two at once because its default
+   load was already in the thousands.
+2. **Each step states what "done" means** in the learner's words. The lab's own
+   briefing says what to *click*; the step says what you should be able to *say*
+   afterwards.
+3. **Eight of the fifteen steps need evidence, not activity.** A step is `auto`
+   (an interaction actually performed), `self` (a judgment call, used twice and
+   only where nothing machine-checkable exists), or `evidence` — an artefact the
+   learner produced:
+
+   | Step | The artefact |
+   |---|---|
+   | 3 · Latency | A correct latency band, committed to before the waterfall appeared, plus having looked at both pipeline shapes |
+   | 7 · Prompts | A prompt *you edited* down below 8% projected failures |
+   | 8 · Agent quality | A configuration where silent state changes were present, then gone |
+   | 9 · Evaluation | A change that fixed cases, regressed none, and opened the release gate |
+   | 12 · Scaling | A correct tier prediction, made after pushing the load past a thousand concurrent calls |
+   | 13 · Break things | A correct prediction of how a call ends, plus the same failure run with and without mitigations |
+   | 14 · Pressure tests | A pressure test you turned from breaking to holding |
+   | 15 · Challenges | A submitted design with no blocking issues that also fits the brief's cost ceiling |
+
+   The prediction-backed ones cannot be earned by reading the answer first: the
+   gate records the prediction *before* it reveals the measurement, and it
+   refuses a second attempt on the same arming.
+
+Cost and the decision engine left the path deliberately. Money is now a
+constraint you design *against* — every generated challenge carries a budget
+ceiling derived from what a reasonable design for those requirements costs — and
+the budget-cut pressure test asks the same question with the architecture in
+front of you.
+
+`npm run coursecheck` walks the whole path in a browser and fails if the rail is
+missing, names the wrong step, if touring every lab grants progress, if doing
+the motions completes an evidence step without the evidence, or if naming a band
+*after* seeing it counts as a prediction.
+
+---
+
+## The simulation engine
+
+Everything rests on determinism: **the same inputs and seed always produce the
+same run.** That is what makes the numbers arguable rather than decorative.
+
+- `Rng` — SplitMix32, seeded from a string. `Math.random()` appears nowhere in
+  the engine. `rng.fork(label)` gives a subsystem its own stream so adding a
+  draw in one place does not shift every other subsystem's numbers.
+- `EventQueue` — binary min-heap ordered by `(time, insertionSeq)`. The sequence
+  tiebreak makes the ordering *total*, so a run is reproducible down to the
+  event index.
+- `Simulation` — a virtual clock plus that queue. Running means: pop the
+  earliest action, advance the clock to it, execute it. Actions emit events and
+  schedule more actions.
+
+The UI **animates** the resulting event log against a scaled wall clock. Pause,
+step and speed change what you are looking at, never what happened. There is no
+`setTimeout` chain driving any result.
+
+```ts
+const sim = new Simulation('my-seed')
+sim.schedule(100, () => sim.emit({ type: 'SPEECH_STARTED', component: 'VAD', summary: '…' }))
+const events = sim.run()          // totally ordered, deterministic
 ```
 
-Then in the [Twilio console](https://console.twilio.com), edit the
-voice configuration for your number:
+Barge-in is why `cancelTag` exists: queued TTS chunk deliveries are tagged, and
+an interruption drops them from the queue rather than playing them out.
 
-- **A call comes in** → Webhook → `https://abcd.ngrok.app/twilio/voice` (HTTP POST).
+---
 
-When you call the number you should hear "Hi, thanks for calling Acme…"
+## How to extend it
 
-## Environment variables
+### Add a component
 
-See `.env.example`. The important ones:
+1. Append a `ComponentSpec` to `src/registry/components.ts`. The type forces you
+   to supply what the inspector shows: description, the problem it solves, I/O,
+   protocols, latency model, resources, scaling model, failure modes,
+   alternatives, why an architect chooses it, what happens when it fails, and
+   all six learning levels.
+2. Optionally add `config` fields — they appear automatically as live controls
+   in the inspector and feed the simulation.
+3. It is now available in the canvas palette, the validator, the scaling model
+   and the cost engine. No other file needs to change.
 
-| Var | Purpose |
+Tests enforce completeness: every spec must have non-trivial text at all six
+learning levels, every failure mode must state caller impact, signal and
+mitigations, and every `concepts` reference must resolve to a knowledge card.
+
+### Add a provider
+
+Implement the interface in `src/providers/types.ts` (`SttProvider`,
+`TtsProvider`, `LlmProvider`, `TelephonyProvider`, `S2sProvider`) and add it to
+the relevant array in `src/providers/simulated.ts`. Providers are pure
+functions of `(request, rng)`, so they stay deterministic.
+
+These interfaces are the seam where a *real* provider would plug in: swap
+`transcribe`/`synthesize`/`complete`/`placeCall` for network calls and nothing
+above the provider layer changes.
+
+### Add a scenario
+
+Append a `Scenario` to `src/scenarios/library.ts` with its requirements, its
+crux, a sample utterance and a `referencePatternId`. A test asserts the
+reference pattern exists and that the scenario is runnable, priceable and
+sizable.
+
+### Add a failure mode
+
+Add a `FailureMode` to the relevant component spec (it appears in the inspector
+and Chaos Lab immediately). To make it injectable into calls, add a variant to
+`FailureTarget` in `src/engine/callSim.ts`, handle it in `simulateCall`, and
+list it in the Chaos Lab's `FAILURES` array.
+
+### Extend the cost model
+
+`src/models/cost.ts` holds `PricingSheet` (every field editable in the UI) and
+`computeCost`. Add a line item by pushing to `items` with its basis string —
+the basis is displayed, so it must explain how the number was derived. Add
+what-if levers in `costLevers`.
+
+### Add a validation rule
+
+Write a `Rule` in `src/validation/rules.ts` and add it to `ALL_RULES`. A rule
+must return findings that say what was **detected**, **why** it matters in a
+voice system specifically, the **fix**, and the engineering **principle** behind
+it — a test enforces that all four are present and substantive.
+
+---
+
+## Testing
+
+332 tests across eight suites:
+
+| Suite | Covers |
 |---|---|
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | Twilio credentials. The auth token is used both to sign outbound REST and to verify `X-Twilio-Signature` on inbound webhooks. |
-| `TWILIO_FROM_NUMBER` | Twilio number that places outbound calls (E.164). |
-| `PUBLIC_BASE_URL` | HTTPS URL Twilio uses to reach us — for the voice webhook and to build the `wss://` URL for Media Streams. |
-| `DEEPGRAM_API_KEY` | Streaming STT. |
-| `ELEVENLABS_API_KEY` / `ELEVENLABS_VOICE_ID` / `ELEVENLABS_MODEL` | Streaming TTS. |
-| `OPENAI_API_KEY` / `OPENAI_MODEL` | LLM (default `gpt-4o-mini`). |
-| `OUTBOUND_API_KEY` | Bearer credential required to trigger `/outbound/call`. Distinct from `TWILIO_AUTH_TOKEN`. |
-| `OUTBOUND_RATE_LIMIT` / `WEBHOOK_RATE_LIMIT` | slowapi strings, default `30/minute` and `120/minute` per source IP. |
-| `EXTERNAL_CALL_TIMEOUT_S` | Per-call timeout on backend I/O (default 5.0s). |
-| `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` | Optional. When both set, orders + appointments live in Postgres. |
-| `LOG_LEVEL` | `INFO` by default. JSON logs to stdout. |
+| `engine/engine.test.ts` | PRNG determinism/distributions, heap ordering, virtual clock, event ordering, cancellation, step limits |
+| `engine/callSim.test.ts` | Call event backbone, determinism, causal marker ordering, interruption, provider failures, handoff |
+| `models/models.test.ts` | Audio arithmetic & pipeline grading, latency overlap semantics, cost shapes, scaling tiers, bottlenecks, autoscaling, regions, reliability strategies, VAD problems, state-machine reachability |
+| `validation/validation.test.ts` | Registry/knowledge completeness, every validator rule, pattern integrity, decision-engine behaviour, challenge generation & evaluation |
+| `integration.test.ts` | The twelve end-to-end scenarios (A–L), cross-cutting coherence, whole-app determinism |
+| `models/v2.test.ts` | Pressure verdicts against every shipped pattern, recognition and code-switching monotonicity, prompt factor composition, quality couplings and expectation algebra, evaluation gates and regressions, removal consequences, compliance findings |
+| `domain/learning.test.ts` | Course shape, progress semantics, the evidence split, and that no lab hosts an ambiguous number of steps |
+| `domain/prediction.test.ts` | Band mapping, scoring and diagnosis, the per-topic record, number provenance |
 
-## Outbound calling
+Plus two browser suites: `npm run smoke` (every route renders with no console
+errors, and nineteen key interactions work) and `npm run coursecheck` (the
+course thread holds and progress cannot be faked).
 
-`POST /outbound/call` places an outbound phone call via the Twilio
-REST API.
+The tests are not decoration — writing them surfaced eight real defects in V1,
+including a cost total that disagreed with the sum of its line items, an
+endpointer that could only ever commit one turn, a human tier staffed at 100%
+occupancy (which queueing theory says is never a plan), and generated
+architectures that were saturated the moment they were produced. Some of the V2
+invariants they pin: per-kind quality expectations must sum exactly to the
+overall expected failure rate; code-switched recognition is never easier than
+monolingual; removing a component always names a gain as well as a break.
 
-```bash
-curl -X POST http://localhost:8000/outbound/call \
-  -H "Authorization: Bearer $OUTBOUND_API_KEY" \
-  -H 'content-type: application/json' \
-  -d '{
-    "to": "+14155550100",
-    "customer_name": "Jane Doe",
-    "first_message": "Hi {{customer_name}}, calling about order {{order_id}}.",
-    "variables": {"customer_name": "Jane Doe", "order_id": "ORD-1001"},
-    "reason": "order_followup",
-    "idempotency_key": "followup-ORD-1001"
-  }'
-# -> 202 {"provider_call_id":"CA...", "status":"queued", "outbound_call_id":"..."}
-```
+---
 
-Or via the helper:
+## On the numbers
 
-```bash
-python scripts/trigger_outbound.py \
-  --to +14155550100 \
-  --first-message 'Hi {{customer_name}}, calling about {{order_id}}.' \
-  --var customer_name='Jane Doe' \
-  --var order_id=ORD-1001 \
-  --reason order_followup \
-  --idempotency-key followup-ORD-1001
-```
+V1 labelled every figure "simulation assumption", which was honest and
+flattening. V2 splits it into three, because learners act on them differently:
 
-### How overrides reach the call
-
-Twilio doesn't have a per-call "assistant overrides" concept. We pass
-`first_message` and `variables` to Twilio's `Url=` parameter as query
-params on the TwiML callback. When the callee picks up, Twilio fetches
-that URL, we read the query params, and the pipeline starts with the
-customised greeting.
-
-### Idempotency
-
-With Supabase configured and an `idempotency_key`:
-
-1. SELECT by key. If a row exists with a `provider_call_id`, return
-   `status: "duplicate"` and **no second dial happens.**
-2. Otherwise call Twilio, then INSERT the audit row. The
-   `outbound_calls.idempotency_key` partial UNIQUE index keeps things
-   correct under concurrency.
-
-Without Supabase, duplicate requests dial twice. For production
-outbound, run with Supabase.
-
-### Error mapping
-
-- `401` — bearer missing/wrong.
-- `400` — E.164 invalid, variables nested, etc.
-- `400` from Twilio (e.g. number not allowed) is forwarded as `400`.
-- `502` — Twilio returned 5xx (we don't auto-retry; that's how you
-  double-dial).
-- `503` — `OUTBOUND_API_KEY` empty, or Twilio not configured.
-
-## Supabase
-
-Optional. With `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` set, the
-registry switches to Supabase-backed backends and the outbound
-endpoint writes an audit row per dial. Apply the migrations once per
-project:
-
-```bash
-# Either paste these into the Supabase SQL editor:
-cat migrations/0001_schema.sql
-cat migrations/0002_seed_dev.sql   # dev/staging only
-cat migrations/0003_outbound_calls.sql
-
-# Or with the Supabase CLI:
-supabase db push
-```
-
-Three tables:
-
-| Table | Purpose | Notes |
+| | What it is | What to do with it |
 |---|---|---|
-| `orders` | Order status read-model | `order_id` PK, `items text[]`, `eta date NULL`. |
-| `appointments` | Booked slots | `UNIQUE(idempotency_key)` + `UNIQUE(starts_at)`. |
-| `outbound_calls` | Outbound audit log | Partial `UNIQUE(idempotency_key) WHERE idempotency_key IS NOT NULL`. |
+| **≈ assumption** | A value this simulator picked so the model has something to chew on | Change it and see whether the conclusion survives |
+| **§ reference** | Fixed by a standard or by arithmetic — G.711 is 64 kbit/s because 8000 samples × 8 bits is 64,000 | Take it as given and design around it |
+| **◉ measured** | Produced by a seeded run of this simulator | Reproduce it with the seed, change an input, re-measure |
 
-Constraint-driven invariants:
+A **measured** number is measured *inside the simulation*. That is the strongest
+claim this application ever makes.
 
-- **Appointments.** Idempotency-key UNIQUE — a retried tool call
-  returns the original confirmation. Starts-at UNIQUE — two callers
-  cannot grab the same slot.
-- **Outbound calls.** Same key UNIQUE — a retried API request returns
-  the original Twilio CallSid.
+They are not measurements of any vendor's production system, and the simulator
+does not claim to know how any real provider behaves. Provider profiles
+("premium streaming TTS", "self-hosted batch STT") model *classes* of choice,
+not products. Compliance content is educational architecture consideration, not
+legal advice.
 
-The Supabase client (`app/supabase_client.py`) is hand-rolled async
-over httpx. The official `supabase-py` is sync; we keep the rest of
-the service async by talking PostgREST directly with only three verbs
-(select, select-by-key, insert).
-
-## Tests
-
-```bash
-.venv/bin/python -m pytest -q
-```
-
-The suite covers, without ever touching Twilio, Deepgram, ElevenLabs,
-OpenAI, or Supabase for real:
-
-- **Tool handlers** — success, not-found, invalid args, weekday/off-hours,
-  slot collision, in-call idempotency.
-- **Supabase backends** — lookup, fresh booking, idempotency replay,
-  concurrent idempotency race, slot collision via constraint name,
-  off-hours short-circuit, registry-level lookup speakable.
-- **Pipecat ⇄ ToolRegistry bridge** — schema content, all tools
-  registered, success/error/invalid-args paths produce the right
-  `{result|error}` payload.
-- **Twilio inbound** — signature missing/wrong/correct, TwiML content,
-  health/readiness probes.
-- **Outbound endpoint** — auth, validation (E.164, no nested vars),
-  override forwarding into the Twilio TwiML URL, 4xx pass-through,
-  5xx → 502, idempotency replay, fresh-call audit insert.
-- **Simulator UI mount** — `/lab` serves the built simulator, returns a
-  helpful 503 when it is not built, and never shadows existing routes.
-
-52 tests, ~3 seconds.
-
-### Simulator tests
-
-The simulator has its own suite (TypeScript, Vitest) covering the
-simulation engine, all the analytic models, the validator, the decision
-engine, the pressure/quality/evaluation models, the guided course and
-twelve end-to-end scenarios:
-
-```bash
-cd simulator
-npm run verify       # typecheck + lint + 332 tests + production build
-npm run smoke        # every route renders, 19 interactions work (needs a preview server)
-npm run coursecheck  # the course thread holds and progress cannot be faked
-```
-
-## Local simulators
-
-```bash
-# Inbound: posts a signed Twilio voice webhook against your running
-# server; prints the TwiML response.
-TWILIO_AUTH_TOKEN=... PUBLIC_BASE_URL=http://127.0.0.1:8000 \
-    python scripts/simulate_inbound.py
-
-# Outbound: triggers a dial via /outbound/call.
-OUTBOUND_API_KEY=... python scripts/trigger_outbound.py \
-    --to +14155550100 \
-    --first-message 'Hi {{name}}' \
-    --var name='Pat' \
-    --dry-run
-```
-
-## Production notes
-
-- **Latency.** Pipecat tuned defaults + Cartesia/ElevenLabs Turbo +
-  Deepgram Nova give ~700-1100 ms turn latency on a warm pipeline.
-  ElevenLabs Turbo TTS is the dominant component; switching to
-  Cartesia would shave ~150-300 ms off TTS first-byte if you need
-  lower latency.
-- **Cost.** GPT-4o-mini at ~5-15 K tokens per call ≈ $0.01-0.03 per
-  call. Deepgram + ElevenLabs at typical call lengths ≈ $0.03-0.10
-  per minute. Twilio US local minutes ≈ $0.014/min.
-- **HTTP 200 on tool errors.** The Pipecat bridge translates a
-  `ToolError` into `{"error": "..."}` payload returned via
-  `result_callback`. The LLM then speaks the friendly error to the
-  caller; nothing surfaces as a transport failure.
-- **Idempotency.** Booking and outbound both rely on Postgres UNIQUE
-  indexes when Supabase is configured, so multi-replica deployments
-  are safe.
-- **Rate limiting.** slowapi per source IP — `120/min` on the Twilio
-  webhook, `30/min` on outbound; health endpoints uncapped.
-- **Auth.** Constant-time compare on every credential path. Twilio
-  webhook signature uses the standard HMAC-SHA1 over canonical URL +
-  sorted params.
-- **Logging.** JSON to stdout with a `call_id` field set from the
-  Twilio `CallSid` on every request line.
-- **Graceful shutdown.** Uvicorn drains in-flight HTTP requests on
-  SIGTERM. The lifespan exit closes the Supabase and Twilio httpx
-  pools.
-
-## Swapping backends
-
-`app/tools/backends.py` defines two `Protocol`s — `OrderBackend` and
-`CalendarBackend`. The in-memory and Supabase backends both satisfy
-them. To plug in a different store (Cal.com, Google Calendar, an
-internal ERP):
-
-1. Implement the two Protocols against your system.
-2. Extend `build_registry` in `app/tools/registry.py` to pick your
-   backend by env var, or replace it entirely.
-
-Tests run against the Protocols, so they keep working unchanged.
-
-## Deployment
-
-```bash
-docker build -t voice-agent .
-docker run -p 8000:8000 --env-file .env voice-agent
-```
-
-Or the whole local stack — API, Postgres, Redis, and the simulator at
-`/lab`:
-
-```bash
-cd simulator && npm install && npm run build && cd ..
-docker compose up --build            # http://localhost:8000/lab
-
-docker compose --profile ui up       # + simulator dev server on :5173
-```
-
-Postgres and Redis are included because the simulator teaches the roles
-they play (durable record / ephemeral session state) and the agent can
-use them locally instead of Supabase. Neither is required by the
-simulator itself, which runs entirely in the browser.
-
-Behind a load balancer:
-
-- `/healthz` → liveness.
-- `/readyz` → readiness.
-- WebSocket termination must support `wss://` and pass through
-  upgrade headers — typical for ALB / nginx / Cloudflare with
-  appropriate config.
-- Set `PUBLIC_BASE_URL` to the externally-visible HTTPS host. Twilio
-  rejects WS upgrades to bare-IP or non-TLS URLs in production.
+What transfers to real work is the reasoning: which constraint forced which
+decision, and what it cost you.

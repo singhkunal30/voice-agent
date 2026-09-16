@@ -1,38 +1,24 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-htmlcov/
-.coverage
-.coverage.*
-*.egg-info/
-build/
+node_modules/
 dist/
+.vite/
+*.local
 
-# Virtual envs
-.venv/
-venv/
-env/
+# Build/test artefacts
+smoke-shots/
+coverage/
+
+# Local environment. Only the example is ever committed — the anon key is
+# public by design, but nothing else in here should be.
 .env
 .env.*
 !.env.example
 
-# IDE
+# Editors / OS
 .idea/
 .vscode/
 *.swp
 *.swo
 .DS_Store
-
-# Secrets / local data
-secrets/
-*.pem
-*.key
 
 # Logs
 *.log

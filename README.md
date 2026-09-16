@@ -22,7 +22,7 @@ Two capabilities the agent handles:
 | | What it is | Where |
 |---|---|---|
 | **Voice Agent** | A real, deployable streaming voice agent. Answers phone calls, transcribes, reasons, calls tools, speaks back. | `app/` |
-| **Architecture Simulator** | A flight simulator for voice/AI systems architecture. Run simulated calls, inject failures, scale to 10,000 concurrent, compare architectures, price them. No API keys, no external services. | `simulator/` |
+| **Voice Agent Lab** | A workspace for voice-agent architecture: draw a system, predict what it will do, run it, break it, and redesign. Pressure tests, agent-quality simulation, a deterministic evaluation suite. No API keys, no external services. | `simulator/` |
 
 They are complementary: the simulator's `media-gateway` and `agent-runtime`
 components model the exact process `app/` implements, and its "Simple customer
@@ -248,11 +248,14 @@ OpenAI, or Supabase for real:
 
 The simulator has its own suite (TypeScript, Vitest) covering the
 simulation engine, all the analytic models, the validator, the decision
-engine and twelve end-to-end scenarios:
+engine, the pressure/quality/evaluation models, the guided course and
+twelve end-to-end scenarios:
 
 ```bash
 cd simulator
-npm run verify    # typecheck + lint + 194 tests + production build
+npm run verify       # typecheck + lint + 331 tests + production build
+npm run smoke        # every route renders, 19 interactions work (needs a preview server)
+npm run coursecheck  # the course thread holds and progress cannot be faked
 ```
 
 ## Local simulators

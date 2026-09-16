@@ -156,6 +156,96 @@ const results = await page.locator('button').filter({ hasText: /Jitter buffer/ }
 console.log(`  ✓ knowledge search finds "jitter": ${results > 0}`)
 if (results === 0) problems.push('[interaction] knowledge base search returned nothing for "jitter"')
 
+// 10. Prediction gate: results stay hidden until you commit to an answer.
+await page.goto(`${BASE}/#/pressure`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(500)
+const gated = await page.locator('body').innerText()
+if (/What survives this/.test(gated)) problems.push('[gate] pressure findings were visible before predicting')
+await page.getByRole('button', { name: /Breaks — it needs a structural change/ }).click()
+await page.waitForTimeout(450)
+const revealed = await page.locator('body').innerText()
+const hasPressureFindings = /What survives this/.test(revealed) && /(Matched|bands out)/.test(revealed)
+console.log(`  ✓ pressure gate hides findings until predicted, then reveals: ${hasPressureFindings}`)
+if (!hasPressureFindings) problems.push('[gate] pressure findings did not appear after predicting')
+await page.screenshot({ path: `${SHOTS}/pressure-findings.png` })
+
+// 11. Pressure: run the whole suite and get a verdict spread.
+await page.getByRole('button', { name: /Run every test against this design/ }).click()
+await page.waitForTimeout(700)
+const suite = await page.locator('body').innerText()
+const spread = /(\d+) hold[\s\S]*?(\d+) degrade[\s\S]*?(\d+) break/.test(suite)
+console.log(`  ✓ full pressure suite reports a verdict spread: ${spread}`)
+if (!spread) problems.push('[interaction] running every pressure test produced no summary')
+
+// 12. Compliance tab.
+await page.getByRole('button', { name: 'Data exposure' }).click()
+await page.waitForTimeout(500)
+const exposure = await page.locator('body').innerText()
+const compliant = exposure.includes('not legal') && /external processor/.test(exposure)
+console.log(`  ✓ data-exposure tab lists processors and disclaims advice: ${compliant}`)
+if (!compliant) problems.push('[interaction] data-exposure tab missing disclaimer or findings')
+
+// 13. Prompt lab: changing a section moves the token cost and the projection.
+await page.goto(`${BASE}/#/prompt`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(500)
+const beforePrompt = await page.locator('body').innerText()
+await page.getByRole('button', { name: /Explicit spoken-output rules/ }).click()
+await page.waitForTimeout(400)
+await page.getByRole('button', { name: /Mandatory read-back of identifiers/ }).click()
+await page.waitForTimeout(400)
+const afterPrompt = await page.locator('body').innerText()
+if (beforePrompt === afterPrompt) problems.push('[interaction] prompt lab did not react to section changes')
+else console.log('  ✓ prompt lab recomputes tokens and projected failures on edit')
+await page.screenshot({ path: `${SHOTS}/prompt-built.png` })
+
+// 14. Quality lab: predicting reveals the twelve turns, each with a verdict.
+await page.goto(`${BASE}/#/quality`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(500)
+await page.getByRole('button', { name: /5–15% of turns go wrong/ }).click()
+await page.waitForTimeout(500)
+const turns = await page.locator('body').innerText()
+const hasTurns = /The twelve turns/.test(turns) && /Expected failure rate/.test(turns)
+console.log(`  ✓ quality lab reveals twelve turns after a prediction: ${hasTurns}`)
+if (!hasTurns) problems.push('[interaction] quality lab did not show the case list')
+await page.screenshot({ path: `${SHOTS}/quality-run.png` })
+
+// 15. Eval lab: the seed sweep renders per-seed results.
+await page.goto(`${BASE}/#/eval`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(500)
+await page.getByRole('button', { name: 'Seed sweep' }).click()
+await page.waitForTimeout(600)
+const sweep = await page.locator('body').innerText()
+const hasSweep = /Mean pass rate/.test(sweep) && /Seed-to-seed spread/.test(sweep)
+console.log(`  ✓ evaluation seed sweep reports mean and spread: ${hasSweep}`)
+if (!hasSweep) problems.push('[interaction] eval seed sweep did not render')
+await page.screenshot({ path: `${SHOTS}/eval-sweep.png` })
+
+// 16. Canvas inspector: the what-if removal analysis.
+await page.goto(`${BASE}/#/canvas`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(700)
+await page.locator('.react-flow__node').first().click()
+await page.waitForTimeout(400)
+await page.getByRole('button', { name: /What if this were not here/ }).click()
+await page.waitForTimeout(400)
+const whatIf = await page.locator('body').innerText()
+const hasWhatIf = /What stops working/.test(whatIf) && /What genuinely improves/.test(whatIf)
+console.log(`  ✓ inspector explains what a component was for, by removing it: ${hasWhatIf}`)
+if (!hasWhatIf) problems.push('[interaction] what-if removal analysis did not open')
+
+// 17. Speech lab: the multilingual section is present and reacts.
+await page.goto(`${BASE}/#/stt`, { waitUntil: 'networkidle' })
+await page.waitForTimeout(500)
+const beforeLang = await page.locator('body').innerText()
+if (!/Two languages, one sentence/.test(beforeLang)) {
+  problems.push('[interaction] multilingual section missing from the speech lab')
+} else {
+  await page.getByRole('switch', { name: /Recogniser trained on the mixed variety/ }).click()
+  await page.waitForTimeout(400)
+  const afterLang = await page.locator('body').innerText()
+  if (beforeLang === afterLang) problems.push('[interaction] code-switch handling toggle changed nothing')
+  else console.log('  ✓ code-switch handling changes the recognition error rate')
+}
+
 await browser.close()
 
 console.log('\n' + '='.repeat(60))

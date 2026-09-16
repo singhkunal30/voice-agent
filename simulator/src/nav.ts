@@ -96,7 +96,7 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         route: '/learn',
         label: 'Guided course',
-        blurb: 'Thirteen steps from "what is a component" to designing under pressure.',
+        blurb: 'Fifteen steps from "what is a component" to designing under pressure.',
         question: 'What order should I learn this in?',
         keywords: ['course', 'path', 'curriculum', 'levels', 'progress', 'syllabus'],
         minutes: 90,
@@ -194,7 +194,7 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       {
         route: '/prompt',
-        label: 'Prompt engineering',
+        label: 'Prompts',
         blurb: 'Assemble a voice prompt section by section and see what each one buys.',
         question: 'What belongs in a voice prompt, and what does every token cost?',
         keywords: ['prompt', 'system prompt', 'instructions', 'guardrails', 'examples', 'tokens', 'tool docs'],

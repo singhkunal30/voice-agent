@@ -292,10 +292,94 @@ code lives inside.
 
 ---
 
-## 12. Honesty about numbers
+## 12. The prediction gate
 
-Every figure is a labelled modelling assumption. This is enforced in three ways:
+`src/ui/Prediction.tsx` is a view, but it carries a design rule that reaches
+into the store and the course, so it belongs here.
 
+A lab wraps its results in a `<PredictionGate>`. The gate renders the question,
+hides the children, and only shows them once the learner has committed to an
+option — or explicitly skipped, which is allowed and marked as producing
+information rather than evidence.
+
+Three properties make it worth the indirection:
+
+1. **The gate never sees the model.** It takes `actual` as a plain option id the
+   lab computed. No question needs to know how its answer is produced, and no
+   model needs to know it is being predicted against.
+2. **Ordering carries meaning.** Options are listed least-to-most, so the
+   distance between prediction and measurement is interpretable: one band out is
+   a wrong constant, several is a wrong causal model. That is what the gate
+   reports instead of a score.
+3. **A retry on the same arming is refused.** `recordedFor` holds
+   `questionId:resetKey`; once a prediction has been recorded for that pair, a
+   second commit is not. Naming a band after seeing it is not a prediction. Labs
+   pass a `resetKey` that changes when the question genuinely changes — a new
+   pressure test, a new load, a different pipeline shape.
+
+A correct prediction writes `predicted:<questionId>` into the progress map via
+`recordPrediction`. That flag is the evidence the course consumes, and it is the
+only progress flag in the app that no lab can set directly.
+
+---
+
+## 13. Pressure testing re-uses the models, it does not replace them
+
+`models/pressure.ts` is deliberately thin on arithmetic. Each of the ten tests
+mutates requirements or reads the architecture graph, then calls the *existing*
+`detectBottlenecks`, `computeLatency`, `computeCost` and `validateArchitecture`.
+Nothing in it is a second opinion about capacity or latency; it is the same
+models asked a harder question.
+
+The one thing it adds is a vocabulary: `holds` / `degrades` / `breaks`, where
+the distinction between the last two is whether you need a **bigger** system or
+a **different** one. Adding replicas is a purchase order. Moving session state
+out of process memory is a project. A verdict that blurs those two is not worth
+reporting.
+
+Per-component availability is the exception: it is a crude assumption table
+keyed on scaling axis and replica count, documented as such in the file. What it
+teaches is exact even where the constants are not — availability multiplies
+along a serial critical path, so the weakest hop caps the system.
+
+---
+
+## 14. Quality is simulated per failure kind, never as one number
+
+`models/agentQuality.ts` computes a separate probability for each of six failure
+kinds and evaluates them in the order they would occur in a real turn, stopping
+at the first that fires. That ordering matters: a turn whose transcript was
+wrong is not *also* independently a tool-selection failure.
+
+Two functions come out of it, and labs use both for different jobs:
+
+- `runQuality(cfg)` — one seeded run. Twelve concrete turns a learner can read.
+- `expectedFailureRate(cfg)` / `expectedByKind(cfg)` — the analytic expectation,
+  no sampling. This is what comparisons are judged on, because comparing two
+  configurations on one seed each compares the seeds.
+
+`expectedByKind` sums exactly to `expectedFailureRate` — both are the same
+telescoping product, and a test pins the identity.
+
+`models/evaluation.ts` sits on top and adds severity, which is assigned by what
+the *caller* can do about the failure rather than by how wrong the agent was.
+That is why a hallucination is a FAIL and a misunderstanding is only a PARTIAL:
+the misunderstanding is visible and self-correcting, and the hallucination is
+neither.
+
+---
+
+## 15. Honesty about numbers
+
+Every figure is labelled with its provenance. `src/domain/numbers.ts` names
+three kinds, because a learner acts on them differently — you tune an
+ASSUMPTION, look up a REFERENCE, and reproduce a MEASURED value. Calling all
+three "assumption", as V1 did, taught learners to discount all three.
+
+This is enforced in four ways:
+
+0. `NumberChip` carries the kind as a glyph *and* a word, so the distinction
+   survives a colour-blind reader and a greyscale print.
 1. The `Assumption` component is used throughout the UI rather than left to
    prose discipline.
 2. `CostResult.assumptions` and `PlannedTier.assumptions` are **required
@@ -308,3 +392,15 @@ Where comparison is qualitative (Architecture Comparison), the app deliberately
 refuses to emit aggregate scores. Summing incommensurable axes hides the
 decision instead of making it; the cells state engineering judgments you can
 argue with instead.
+
+The same refusal applies to the learner. The prediction record reports attempts
+and how far each one landed, per topic, and never rolls them into a score, a
+level or a streak. "You have been wrong about capacity three times" is a useful
+sentence. "You are level 4" is not one.
+
+The compliance model is the sharpest case: it states, in the model itself and
+again in the UI, that it is an awareness check inside a simulator and not legal
+advice. What it can check is whether the architecture has somewhere to *put* an
+obligation — a retention policy, a redaction point, a residency boundary. Whether
+a real deployment satisfies a real regulation is a question for people who do
+that professionally.

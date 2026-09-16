@@ -1,21 +1,43 @@
-# Voice Agent Architecture Simulator & Learning Lab
+# Voice Agent Lab
 
-A flight simulator for voice/AI systems architecture.
+A workspace for designing, simulating, breaking and redesigning voice-agent
+architectures.
 
-You do not read diagrams here — you run simulated calls, break them, watch the
-consequences propagate, change the requirements, and redesign. Every number is
-produced by a deterministic simulation engine and labelled as the modelling
-assumption it is.
+You do not read diagrams here. You draw a system, commit to what you think it
+will do, run it, find out you were wrong, and change it. Every number is
+produced by a deterministic simulation and labelled with where it came from.
 
-It teaches one mental model end to end:
+The workspace is organised around the five systems a voice agent is made of —
+**the voice loop, the agent, the network, production, architecture** — and the
+loop you work them in:
 
 ```
-Requirements → Constraints → Architecture → Technology choices → Data/Audio flow
-   → Latency → Infrastructure → Failure modes → Observability → Cost → Optimization
+Design → Predict → Simulate → Observe → Explain → Redesign
 ```
+
+Crossing that is a second axis: what you are *doing*. Building is not the same
+activity as breaking, and neither is diagnosing. The mode chips in the sidebar
+(Learn · Build · Simulate · Break · Diagnose · Challenge · Reference) filter the
+same labs rather than duplicating the menu.
 
 **No API keys. No external services. No network calls.** The entire simulation
-engine runs in your browser.
+runs in your browser.
+
+### The one idea
+
+Most learning tools show you an answer. This one hides it until you have
+committed to your own. A lab that can measure something asks for a band first —
+"where will perceived latency land?", "does this architecture hold under ten
+times the traffic?" — and then puts your answer next to the measured one with a
+*diagnosis* rather than a score:
+
+- **exact** — your model produced the right answer.
+- **one band out** — the shape of your model is right, a constant is wrong.
+- **several bands out** — something in the causal chain is not where you think.
+
+You can always skip the prediction. A skipped run is explicitly marked as
+producing information rather than evidence, and the course only counts the
+latter.
 
 ---
 
@@ -53,8 +75,9 @@ npm run coursecheck  # optional: walks the 13-step course and checks the thread 
 
 ## Finding your way around
 
-The sidebar groups the labs by the question they answer, and only the group you
-are in stays open. Two shortcuts matter more than the menu:
+The sidebar groups the labs into the five systems, filtered by whichever mode
+you have selected, and only the group you are in stays open. Two shortcuts
+matter more than the menu:
 
 - **⌘K** (or `/`) — search every lab and every glossary term. Plain words work:
   try "slow", "cost", "phone", "opus".
@@ -73,8 +96,8 @@ the hand-drawn SVG diagrams.
 
 | Section | What you do there |
 |---|---|
-| **Home** | Three ways in, your progress, the full lab map |
-| **Guided course** | 13 steps in 5 stages, from "what is a component" to "design under pressure". The step follows you into each lab, so you never lose your place |
+| **Workspace** | Where you left off, how your current design does under pressure, what you have predicted, the full lab map |
+| **Guided course** | 15 steps in 6 stages. Eight of them need evidence rather than activity. The step follows you into each lab, so you never lose your place |
 | **Scenarios** | 12 realistic briefs; activating one threads its requirements through every other lab |
 | **Live call** | Run a full call: signalling → audio frames → VAD → STT → LLM → tools → TTS → playback. Interrupt it. Break it. |
 | **Architecture canvas** | Drag, connect, configure, validate, simulate, export (JSON/PNG/SVG) |
@@ -83,7 +106,7 @@ the hand-drawn SVG diagrams.
 | **Audio formats** | PCM, μ-law, Opus, sample rates, and detection of transcoding you didn't need |
 | **Latency** | Closed-form waterfall; every input is a slider; streaming vs batch quantified |
 | **Turn-taking** | Tune VAD against scripted audio containing a cough and a mid-sentence thinking pause |
-| **Speech to text / Text to speech** | Simulated provider families; streaming vs batch; what noise and 8 kHz do to accuracy |
+| **Speech to text / Text to speech** | Simulated provider families; streaming vs batch; what noise and 8 kHz do to accuracy; and Hinglish code-switching as the honest hard case |
 | **Agent runtime** | Context building, function calls, blocking vs async tools, failure recovery |
 | **Conversation state** | Conversation / telephony / handoff machines — clickable, with timers and failure branches |
 | **Telephony** | SIP ladder, RTP, DTMF, trunking — why signalling and media take different paths |
@@ -91,12 +114,16 @@ the hand-drawn SVG diagrams.
 | **WebRTC** | SDP, ICE, STUN/TURN, and the browser-vs-phone architecture comparison |
 | **Human handoff** | Availability check, queue, warm transfer, context transfer — and every failure branch |
 | **Scaling** | Sizing, long-lived connections, autoscaling with warmup lag, multi-region failover |
-| **Break things** | Arm failures, watch blast radius on the canvas, toggle mitigations, compare |
+| **Break things** | Arm failures, predict what the caller experiences, watch blast radius on the canvas, toggle mitigations, compare |
+| **Pressure tests** | Ten changes the world makes to a design — 10× traffic, a vendor outage, +150 ms per hop, a 40% budget cut, a second language, four nines, tripled escalations, a second region, a 40× slower database, a queue backlog. Plus a data-exposure tab: every copy of caller data the pipeline creates |
+| **Prompts** | A voice prompt as an engineering artefact: section by section, with the per-turn token cost and the failure each instruction prevents |
+| **Agent quality** | Twelve realistic turns and the six ways they go wrong — misunderstood, wrong tool, wrong arguments, hallucination, lost state, missed and over escalation |
+| **Evaluation** | PASS / PARTIAL / FAIL, a release gate on state-changing cases, regression comparison between two configurations, and a seed sweep |
 | **Reliability patterns** | Retry, backoff, jitter, circuit breaker, fallback — measured against one outage |
 | **Cost** | Per-call/day/month/year, editable pricing sheet, optimisation levers |
 | **Decision engine** | Requirements in → architecture out, with every Requirement→Constraint→Decision→Tradeoff record |
 | **Compare designs** | Batch vs streaming vs speech-to-speech vs hybrid, on explicit axes |
-| **Challenges** | Generated brief, your design, an honest evaluation (nothing revealed before you submit) |
+| **Challenges** | Generated brief *with a cost ceiling*, your design, an honest evaluation (nothing revealed before you submit) |
 | **Glossary** | Concept cards, each answering the same eight questions |
 
 ---
@@ -109,7 +136,9 @@ simulator/
 │   ├── domain/          Types, architecture builder DSL, learning progression
 │   │   ├── types.ts     THE domain model — every lab reads these types
 │   │   ├── builder.ts   Programmatic architecture construction
-│   │   └── learning.ts  The guided course — the spine every surface reads
+│   │   ├── learning.ts  The guided course — the spine every surface reads
+│   │   ├── prediction.ts Questions, bands and diagnoses for the predict loop
+│   │   └── numbers.ts   ASSUMPTION / REFERENCE / MEASURED provenance
 │   ├── engine/          The deterministic simulation kernel
 │   │   ├── rng.ts       Seeded PRNG (SplitMix32) — no Math.random anywhere
 │   │   ├── queue.ts     Binary min-heap, (time, seq) total ordering
@@ -122,7 +151,14 @@ simulator/
 │   │   ├── cost.ts      Cost engine + optimisation levers
 │   │   ├── reliability.ts Retry/backoff/breaker/fallback simulation
 │   │   ├── vad.ts       VAD + turn detection over a scripted track
-│   │   └── stateMachines.ts Conversation / telephony / handoff machines
+│   │   ├── stateMachines.ts Conversation / telephony / handoff machines
+│   │   ├── pressure.ts  Ten named changes applied to a design, re-using the models above
+│   │   ├── prompt.ts    Voice prompt sections → behaviour factors + token cost
+│   │   ├── agentQuality.ts The six ways a turn goes wrong, seeded and explainable
+│   │   ├── evaluation.ts PASS/PARTIAL/FAIL, release gate, regressions, seed sweep
+│   │   ├── whatIf.ts    Remove a component and report what it was for
+│   │   ├── language.ts  Accent, telephony and code-switching effects on recognition
+│   │   └── compliance.ts Every copy of caller data a voice pipeline creates
 │   ├── providers/       STT/TTS/LLM/Telephony interfaces + simulated impls
 │   ├── registry/        Component catalog (the single source of component truth)
 │   ├── validation/      Architecture rules
@@ -133,19 +169,21 @@ simulator/
 │   ├── knowledge/       Concept cards
 │   ├── state/           Zustand store (localStorage persistence)
 │   ├── ui/              Shared components (canvas, timeline, waterfall, controls, ⌘K palette)
+│   │   └── Prediction.tsx The gate that hides results until you commit to an answer
 │   ├── labs/            One file per section
-│   ├── nav.ts           Single source of truth for navigation, search and prev/next
-│   └── theme.css        Colour tokens for both themes (Tailwind and the SVGs read the same vars)
-└── scripts/smoke.mjs    Optional browser smoke test
+│   ├── nav.ts           Five systems × seven modes — navigation, search, prev/next
+│   └── theme.css        Colour, space and density tokens (Tailwind and the SVGs read the same vars)
+├── scripts/smoke.mjs    Browser smoke test: every route, every key interaction
+└── scripts/coursecheck.mjs Walks the course and fails if progress can be faked
 ```
 
 ---
 
 ## The guided course
 
-Twenty-six labs is a menu, not a curriculum. `src/domain/learning.ts` turns them
-into an ordered path — five stages, thirteen steps — and every surface reads
-from it: the course page, the sidebar step numbers, the home page's "continue",
+Twenty-nine labs is a menu, not a curriculum. `src/domain/learning.ts` turns
+them into an ordered path — six stages, fifteen steps — and every surface reads
+from it: the course page, the sidebar step numbers, the workspace's "continue",
 the prev/next footer, and the **course rail**.
 
 The rail is the important part. The course used to stop at the door of every
@@ -155,20 +193,45 @@ carries the step's number, its goal, what "done" means here, and the button that
 continues the path. Labs that are *not* course steps say so, so reference
 material does not read like a step you forgot.
 
-Two rules keep it honest:
+Three rules keep it honest, and the third is the one that matters:
 
-1. **Visiting a page never completes anything.** Each step is either `auto`
-   (earned by an interaction the learner actually performs) or `self` (a
-   judgment call they tick themselves, with the question stated). Progress you
-   did not earn is worse than no progress bar — and this was a real bug: five
-   steps used to tick on arrival, and the scaling lab completed two steps at
-   once because its default load was already in the thousands.
+1. **Visiting a page never completes anything.** Progress you did not earn is
+   worse than no progress bar — and this was a real bug in V1: five steps ticked
+   on arrival, and the scaling lab completed two at once because its default
+   load was already in the thousands.
 2. **Each step states what "done" means** in the learner's words. The lab's own
    briefing says what to *click*; the step says what you should be able to *say*
    afterwards.
+3. **Eight of the fifteen steps need evidence, not activity.** A step is `auto`
+   (an interaction actually performed), `self` (a judgment call, used twice and
+   only where nothing machine-checkable exists), or `evidence` — an artefact the
+   learner produced:
+
+   | Step | The artefact |
+   |---|---|
+   | 3 · Latency | A correct latency band, committed to before the waterfall appeared, plus having looked at both pipeline shapes |
+   | 7 · Prompts | A prompt *you edited* down below 8% projected failures |
+   | 8 · Agent quality | A configuration where silent state changes were present, then gone |
+   | 9 · Evaluation | A change that fixed cases, regressed none, and opened the release gate |
+   | 12 · Scaling | A correct tier prediction, made after pushing the load past a thousand concurrent calls |
+   | 13 · Break things | A correct prediction of how a call ends, plus the same failure run with and without mitigations |
+   | 14 · Pressure tests | A pressure test you turned from breaking to holding |
+   | 15 · Challenges | A submitted design with no blocking issues that also fits the brief's cost ceiling |
+
+   The prediction-backed ones cannot be earned by reading the answer first: the
+   gate records the prediction *before* it reveals the measurement, and it
+   refuses a second attempt on the same arming.
+
+Cost and the decision engine left the path deliberately. Money is now a
+constraint you design *against* — every generated challenge carries a budget
+ceiling derived from what a reasonable design for those requirements costs — and
+the budget-cut pressure test asks the same question with the architecture in
+front of you.
 
 `npm run coursecheck` walks the whole path in a browser and fails if the rail is
-missing, names the wrong step, or if touring every lab grants progress.
+missing, names the wrong step, if touring every lab grants progress, if doing
+the motions completes an evidence step without the evidence, or if naming a band
+*after* seeing it counts as a prediction.
 
 ---
 
@@ -263,7 +326,7 @@ it — a test enforces that all four are present and substantive.
 
 ## Testing
 
-194 tests across five suites:
+331 tests across eight suites:
 
 | Suite | Covers |
 |---|---|
@@ -272,21 +335,38 @@ it — a test enforces that all four are present and substantive.
 | `models/models.test.ts` | Audio arithmetic & pipeline grading, latency overlap semantics, cost shapes, scaling tiers, bottlenecks, autoscaling, regions, reliability strategies, VAD problems, state-machine reachability |
 | `validation/validation.test.ts` | Registry/knowledge completeness, every validator rule, pattern integrity, decision-engine behaviour, challenge generation & evaluation |
 | `integration.test.ts` | The twelve end-to-end scenarios (A–L), cross-cutting coherence, whole-app determinism |
+| `models/v2.test.ts` | Pressure verdicts against every shipped pattern, recognition and code-switching monotonicity, prompt factor composition, quality couplings and expectation algebra, evaluation gates and regressions, removal consequences, compliance findings |
+| `domain/learning.test.ts` | Course shape, progress semantics, the evidence split, and that no lab hosts an ambiguous number of steps |
+| `domain/prediction.test.ts` | Band mapping, scoring and diagnosis, the per-topic record, number provenance |
 
-The tests are not decoration — writing them surfaced eight real defects,
+Plus two browser suites: `npm run smoke` (every route renders with no console
+errors, and nineteen key interactions work) and `npm run coursecheck` (the
+course thread holds and progress cannot be faked).
+
+The tests are not decoration — writing them surfaced eight real defects in V1,
 including a cost total that disagreed with the sum of its line items, an
 endpointer that could only ever commit one turn, a human tier staffed at 100%
 occupancy (which queueing theory says is never a plan), and generated
-architectures that were saturated the moment they were produced.
+architectures that were saturated the moment they were produced. Some of the V2
+invariants they pin: per-kind quality expectations must sum exactly to the
+overall expected failure rate; code-switched recognition is never easier than
+monolingual; removing a component always names a gain as well as a break.
 
 ---
 
 ## On the numbers
 
-Every figure in this application is a **simulation assumption**: chosen to be
-order-of-magnitude plausible and to make the *relationships* between design
-choices visible. They are labelled as such in the UI, and the ones that matter
-are editable.
+V1 labelled every figure "simulation assumption", which was honest and
+flattening. V2 splits it into three, because learners act on them differently:
+
+| | What it is | What to do with it |
+|---|---|---|
+| **≈ assumption** | A value this simulator picked so the model has something to chew on | Change it and see whether the conclusion survives |
+| **§ reference** | Fixed by a standard or by arithmetic — G.711 is 64 kbit/s because 8000 samples × 8 bits is 64,000 | Take it as given and design around it |
+| **◉ measured** | Produced by a seeded run of this simulator | Reproduce it with the seed, change an input, re-measure |
+
+A **measured** number is measured *inside the simulation*. That is the strongest
+claim this application ever makes.
 
 They are not measurements of any vendor's production system, and the simulator
 does not claim to know how any real provider behaves. Provider profiles

@@ -4,6 +4,8 @@ import { DEFAULT_TRAFFIC_OPTS, simulateTraffic, type TrafficPoint } from '../mod
 import { computeCost, DEFAULT_COST_INPUTS } from '../models/cost'
 import { Assumption, Badge, Callout, PageHeader, Panel, Stat, fmtMs, fmtNum, fmtUsd } from '../ui/primitives'
 import { Segmented, Slider, Toggle } from '../ui/controls'
+import { SATURATION_BANDS, SATURATION_Q, bandFor } from '../domain/prediction'
+import { PredictionGate } from '../ui/Prediction'
 
 type ScenarioKind = 'normal' | 'spike' | 'outage' | 'spike-no-autoscale'
 
@@ -58,6 +60,11 @@ export default function Observability() {
 
   const health = now.errorRatePct > 5 || now.p95LatencyMs > 2000 ? 'bad' : now.errorRatePct > 1 || now.p95LatencyMs > 1200 ? 'warn' : 'good'
 
+  // How close to the edge this run gets, as a fraction. CPU is the proxy the
+  // traffic model exposes; the prediction question is about the fleet, not any
+  // one resource.
+  const peakUtilisation = useMemo(() => Math.max(...points.map((p) => p.cpuPct)) / 100, [points])
+
   return (
     <div className="p-4">
       <PageHeader
@@ -88,8 +95,22 @@ export default function Observability() {
         <span className="font-mono text-2xs text-ink-500">t = {now.t}s · phase: {now.phase}</span>
       </div>
 
+      <PredictionGate
+        question={SATURATION_Q}
+        route="/observability"
+        actual={bandFor(peakUtilisation, SATURATION_BANDS).id}
+        resetKey={`${scenario}:${baseline}`}
+        className="mb-4 space-y-4"
+        note={
+          <>
+            Scenario: <b className="text-ink-200">{SCENARIO_LABEL[scenario]}</b> at {baseline.toLocaleString()} baseline
+            concurrent calls. Remember that autoscaling has to lead demand by its warmup time, and that a voice call
+            holds its connection for minutes — the fleet cannot shed load by finishing requests faster.
+          </>
+        }
+      >
       {/* Metric cards */}
-      <div className="mb-4 grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid gap-2 sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Active calls" value={fmtNum(now.activeCalls)} tone="accent" />
         <Stat label="Calls / min (offered)" value={fmtNum(Math.round(now.offeredCalls / 4))} hint="Arrival rate — much smaller than concurrency, because calls last minutes." />
         <Stat label="Concurrent connections" value={fmtNum(now.activeCalls * 3)} hint="≈3 per call: carrier WS + STT stream + TTS stream." />
@@ -181,6 +202,8 @@ export default function Observability() {
           </div>
         </Panel>
       </div>
+
+      </PredictionGate>
 
       <Panel title="What you are watching" className="mt-4">
         <NarrativeStrip scenario={scenario} now={now} points={points} />

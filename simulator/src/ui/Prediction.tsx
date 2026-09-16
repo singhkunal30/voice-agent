@@ -17,7 +17,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { PredictionQuestion } from '../domain/prediction'
-import { scorePrediction } from '../domain/prediction'
+import { calibration, scorePrediction } from '../domain/prediction'
 import { useAppStore } from '../state/store'
 
 export function PredictionGate({
@@ -184,24 +184,16 @@ export function PredictionRecord({ compact = false }: { compact?: boolean }) {
     )
   }
 
-  // Aggregated here rather than via domain/prediction's `calibration` so this
-  // component stays a pure view over the stored record.
-  const byQuestion = new Map<string, { attempts: number; exact: number; near: number; far: number; prompt: string }>()
-  for (const p of predictions) {
-    const cur = byQuestion.get(p.questionId) ?? { attempts: 0, exact: 0, near: 0, far: 0, prompt: p.questionId }
-    cur.attempts++
-    if (p.distance === 0) cur.exact++
-    else if (p.distance === 1) cur.near++
-    else cur.far++
-    byQuestion.set(p.questionId, cur)
-  }
+  const topics = calibration(predictions)
 
   return (
     <div>
       <ul className="space-y-1.5">
-        {[...byQuestion.entries()].map(([id, c]) => (
-          <li key={id} className="flex items-center gap-3 text-sm">
-            <span className="min-w-0 flex-1 truncate text-ink-300">{TOPIC_LABELS[id] ?? id}</span>
+        {topics.map((c) => (
+          <li key={c.questionId} className="flex items-center gap-3 text-sm">
+            <span className="min-w-0 flex-1 truncate text-ink-300" title={c.prompt}>
+              {TOPIC_LABELS[c.questionId] ?? c.questionId}
+            </span>
             <span className="flex shrink-0 items-center gap-1.5 font-mono text-2xs">
               <span className="text-good" title="Exact band">
                 {c.exact} exact
@@ -239,7 +231,6 @@ const TOPIC_LABELS: Record<string, string> = {
   'call-outcome': 'How a call ends under failure',
   saturation: 'How close a fleet is to the edge',
   'infra-tier': 'What shape of system a load needs',
-  'first-bottleneck': 'Which component gives out first',
   'cost-per-call': 'What a call costs',
   'pressure-verdict': 'Whether a design holds under pressure',
   'agent-quality': 'How many turns go wrong',

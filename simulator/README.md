@@ -326,7 +326,7 @@ it — a test enforces that all four are present and substantive.
 
 ## Testing
 
-331 tests across eight suites:
+329 tests across eight suites:
 
 | Suite | Covers |
 |---|---|

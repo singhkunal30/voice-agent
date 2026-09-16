@@ -7,13 +7,10 @@ import {
   SATURATION_BANDS,
   bandFor,
   calibration,
-  firstBottleneckQuestion,
-  predictionCount,
   scorePrediction,
-  topicsProven,
   type PredictionRecordEntry,
 } from './prediction'
-import { KIND_ACTION, KIND_MEANING, PERCEPTION_BANDS, REFERENCE_NUMBERS, assumption, measured, perceptionBand, reference } from './numbers'
+import { KIND_ACTION, KIND_MEANING, PERCEPTION_BANDS, REFERENCE_NUMBERS, perceptionBand } from './numbers'
 
 describe('prediction questions', () => {
   it('every question explains why the guess is worth making', () => {
@@ -36,9 +33,10 @@ describe('prediction questions', () => {
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('builds a bottleneck question from whatever is on the canvas', () => {
-    const q = firstBottleneckQuestion([{ id: 'n1', label: 'Media gateway' }])
-    expect(q.options.map((o) => o.id)).toEqual(['n1', 'none'])
+  it('every question is reachable from a lab, not just from this test', () => {
+    // A question with no home is dead weight: it drifts out of date and the
+    // learner never sees it. Keeping the set small is the point.
+    expect(ALL_QUESTIONS.length).toBeLessThanOrEqual(8)
   })
 })
 
@@ -104,11 +102,6 @@ describe('the prediction record', () => {
     { questionId: 'saturation', correct: false, distance: 1, route: '/scaling', at: 3 },
   ]
 
-  it('counts every prediction committed to', () => {
-    expect(predictionCount(entries)).toBe(3)
-    expect(predictionCount([])).toBe(0)
-  })
-
   it('breaks calibration down per topic rather than into one score', () => {
     const c = calibration(entries)
     const latency = c.find((x) => x.questionId === 'perceived-latency')!
@@ -118,13 +111,14 @@ describe('the prediction record', () => {
     expect(latency.near).toBe(0)
   })
 
-  it('counts a topic as proven once, however many times it is repeated', () => {
+  it('aggregates repeated attempts on one topic into a single row', () => {
     const repeated = [...entries, { questionId: 'perceived-latency', correct: true, distance: 0, route: '/latency', at: 4 }]
-    expect(topicsProven(repeated)).toEqual(['perceived-latency'])
+    const c = calibration(repeated)
+    expect(c).toHaveLength(2)
+    expect(c.find((x) => x.questionId === 'perceived-latency')!.attempts).toBe(3)
   })
 
-  it('proves nothing from an empty record', () => {
-    expect(topicsProven([])).toEqual([])
+  it('reports nothing from an empty record', () => {
     expect(calibration([])).toEqual([])
   })
 })
@@ -135,14 +129,6 @@ describe('number provenance', () => {
       expect(KIND_MEANING[kind].length).toBeGreaterThan(80)
       expect(KIND_ACTION[kind].length).toBeGreaterThan(20)
     }
-  })
-
-  it('tags values with where they came from', () => {
-    expect(assumption(50, 'sizing guess').provenance.kind).toBe('ASSUMPTION')
-    expect(reference(64, 'ITU-T G.711').provenance.kind).toBe('REFERENCE')
-    const m = measured(812, 'seed-4')
-    expect(m.provenance.kind).toBe('MEASURED')
-    expect(m.provenance.seed).toBe('seed-4')
   })
 
   it('every reference number cites its standard', () => {

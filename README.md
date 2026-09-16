@@ -253,7 +253,7 @@ twelve end-to-end scenarios:
 
 ```bash
 cd simulator
-npm run verify       # typecheck + lint + 331 tests + production build
+npm run verify       # typecheck + lint + 329 tests + production build
 npm run smoke        # every route renders, 19 interactions work (needs a preview server)
 npm run coursecheck  # the course thread holds and progress cannot be faked
 ```

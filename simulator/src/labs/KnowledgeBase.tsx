@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { KNOWLEDGE_CARDS, KNOWLEDGE_CATEGORIES } from '../knowledge/cards'
 import type { KnowledgeCard } from '../domain/types'
-import { Badge, KV, PageHeader, Panel } from '../ui/primitives'
+import { Badge, KV, NumberChip, PageHeader, Panel, ProvenanceLegend } from '../ui/primitives'
+import { REFERENCE_NUMBERS } from '../domain/numbers'
 
 export default function KnowledgeBase() {
   const [query, setQuery] = useState('')
@@ -145,6 +146,37 @@ export default function KnowledgeBase() {
           </Panel>
         )}
       </div>
+
+      {/* The numbers you do not get to argue with. Everything else in this
+          application is an editable assumption; these are arithmetic over
+          published protocol constants, and most voice-architecture mistakes
+          are attempts to design around one of them. */}
+      <Panel
+        className="mt-5"
+        title="Fixed by standards, not by us"
+        right={<NumberChip kind="REFERENCE" />}
+      >
+        <p className="mb-3 max-w-3xl text-sm leading-relaxed text-ink-400">
+          Every other number in this workspace is an editable assumption. These are not: they are arithmetic over
+          published protocol constants. You look them up and design around them — and a surprising share of
+          voice-architecture mistakes are attempts to design around one of them anyway.
+        </p>
+        <div className="grid gap-2 lg:grid-cols-2">
+          {REFERENCE_NUMBERS.map((n) => (
+            <div key={n.id} className="rounded-md border border-ink-800 bg-ink-850/40 p-3">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="text-sm font-semibold text-ink-100">{n.label}</span>
+                <span className="font-mono text-sm text-media">{n.value}</span>
+                <span className="ml-auto text-2xs text-ink-500">{n.source}</span>
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-ink-400">{n.note}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 border-t border-ink-800 pt-3">
+          <ProvenanceLegend />
+        </div>
+      </Panel>
     </div>
   )
 }

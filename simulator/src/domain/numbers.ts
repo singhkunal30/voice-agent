@@ -24,31 +24,6 @@
 
 export type NumberKind = 'ASSUMPTION' | 'REFERENCE' | 'MEASURED'
 
-export interface Provenance {
-  kind: NumberKind
-  /** Where it came from: a standard's name, a seed, or the reasoning behind a guess. */
-  source: string
-  /** Present for MEASURED values: the seed that reproduces them. */
-  seed?: string
-}
-
-export interface Tracked<T = number> {
-  value: T
-  provenance: Provenance
-}
-
-export function assumption<T>(value: T, source: string): Tracked<T> {
-  return { value, provenance: { kind: 'ASSUMPTION', source } }
-}
-
-export function reference<T>(value: T, source: string): Tracked<T> {
-  return { value, provenance: { kind: 'REFERENCE', source } }
-}
-
-export function measured<T>(value: T, seed: string, source = 'Produced by this simulator'): Tracked<T> {
-  return { value, provenance: { kind: 'MEASURED', source, seed } }
-}
-
 /** One-line explanation of each kind, for tooltips and the legend. */
 export const KIND_MEANING: Record<NumberKind, string> = {
   ASSUMPTION:

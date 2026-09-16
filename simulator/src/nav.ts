@@ -43,11 +43,6 @@ export const MODES: ModeMeta[] = [
   { id: 'reference', label: 'Reference', blurb: 'Look something up.', icon: 'book' },
 ]
 
-export const MODE_BY_ID: Record<Mode, ModeMeta> = Object.fromEntries(MODES.map((m) => [m.id, m])) as Record<
-  Mode,
-  ModeMeta
->
-
 export interface LabMeta {
   route: string
   label: string
@@ -416,9 +411,6 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ]
 
-/** The five systems, without the chrome around them. */
-export const SYSTEMS: NavGroup[] = NAV_GROUPS.filter((g) => g.kind === 'system')
-
 /** Flat, ordered list — drives prev/next and the command palette. */
 export const ALL_LABS: LabMeta[] = NAV_GROUPS.flatMap((g) => g.items)
 
@@ -427,11 +419,6 @@ export const LAB_BY_ROUTE: Record<string, LabMeta> = Object.fromEntries(ALL_LABS
 export const GROUP_BY_ROUTE: Record<string, NavGroup> = Object.fromEntries(
   NAV_GROUPS.flatMap((g) => g.items.map((i) => [i.route, g])),
 )
-
-/** Labs that support a given activity. */
-export function labsInMode(mode: Mode): LabMeta[] {
-  return ALL_LABS.filter((l) => l.modes.includes(mode) && l.route !== '/')
-}
 
 /** Groups filtered to a mode, dropping any that end up empty. */
 export function groupsInMode(mode: Mode | null): NavGroup[] {

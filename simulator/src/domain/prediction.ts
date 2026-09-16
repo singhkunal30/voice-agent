@@ -143,19 +143,6 @@ export const SATURATION_Q: PredictionQuestion = {
   options: SATURATION_BANDS.map((b) => ({ id: b.id, label: b.label })),
 }
 
-/** Which component gives out first — options are generated from the architecture. */
-export function firstBottleneckQuestion(labels: { id: string; label: string }[]): PredictionQuestion {
-  return {
-    id: 'first-bottleneck',
-    prompt: 'Before you run it: which component runs out of room first?',
-    why: 'The answer is almost never the component doing the most obvious work. Capacity is per-connection for some components and per-request for others, and the two saturate at wildly different loads.',
-    options: [
-      ...labels.map((l) => ({ id: l.id, label: l.label })),
-      { id: 'none', label: 'Nothing saturates at this load' },
-    ],
-  }
-}
-
 export const COST_BANDS = [
   { id: 'cheap', max: 0.02, label: 'Under 2¢ per call' },
   { id: 'moderate', max: 0.08, label: '2–8¢ per call' },
@@ -270,16 +257,3 @@ export function calibration(entries: PredictionRecordEntry[]): TopicCalibration[
   }))
 }
 
-/** How many predictions the learner has committed to at all. */
-export function predictionCount(entries: PredictionRecordEntry[]): number {
-  return entries.length
-}
-
-/**
- * Distinct questions the learner has predicted correctly at least once.
- * This is what the course uses as evidence — not a hit rate, because a hit
- * rate rewards predicting the same easy thing repeatedly.
- */
-export function topicsProven(entries: PredictionRecordEntry[]): string[] {
-  return [...new Set(entries.filter((e) => e.correct).map((e) => e.questionId))]
-}
